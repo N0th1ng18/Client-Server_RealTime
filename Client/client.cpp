@@ -11,7 +11,7 @@ int main(){
 	Engine::OpenGLState openGLState = {};
 	RenderResources renderResources = {}; 
 	RenderState renderState = {};
-
+	
 	//Setup
 	windowState.isFullscreen = false;
 	openGLState.isCulling = true;

@@ -4,15 +4,29 @@
     Nicholas Frey
 
     To do:
-        1) Text
-        2) Buttons
-        3) Scene/Page Loader
-        4) Client-Server setup and test
-        ...
-        n) Object loader from file
-        n) Scene/Page loader from file
+        * Multiplayer Only - first thing is connect to a server.
+        * Menu Loader          
+        *   - Text                                                                  (2 week)                     
+        *   - Buttons                                                               (1 day)
+        *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
+        *   - Play Online - Host Server, Join By Ip, Back                           (less than 1 day)     
+        *   - Settings - Video, Audio, Back                                         (less than 1 day)
+        *   - Quit - Exits                                                          (less than 1 day)
+        *   - Menu Page Loader                                                      (1 day)
+        * Client-Server Setup and test
+        *   - Setup Basic Connection                                                (1 day)
+        *   - Setup Ping Delay for testing                                          (1 day)
+        *   - Setup Dump Client                                                     (1 day)
+        *   - Setup Client-Side Prediciton                                          (1 week)
+        *   - Setup Server Reconciliation                                           (1 week)
+        *   - Setup Entity Interpolation                                            (1 day)
+        *   - Setup Lag Compensation                                                (1 week)
+        * Water/Fluid Dynamics
+        *   - Simulation On Client-Side                                             (tbd)
+        *   - Simulation Over Client-Server                                         (tbd)
+        *   - Simulation with Prediction and Lag Compensation                       (tbd)
 
-    Server:
+    Server:                                                                         
         * Max Players Per Game is 4.
         
 
@@ -28,6 +42,7 @@ int Engine::initEngine(WindowState* windowState, OpenGLState* openGLState, Rende
     createWindow(windowState);
     loadWindowState(windowState);
     loadInputState(windowState, Engine::input);
+    Engine::inputState = {};
 	glewExperimental = true;
 	if (glewInit() != GLEW_OK) {std::cout << "Failed to initialize GLEW\n"; return 1;}
     loadOpenGLState(openGLState);
@@ -111,8 +126,53 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
 
 void Engine::input(GLFWwindow* window, int key, int scancode, int action, int mods){
 
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS){
-            glfwSetWindowShouldClose(window, GLFW_TRUE);
+    switch(key){
+        case GLFW_KEY_W:
+        {
+            if(action == GLFW_PRESS){
+                inputState.key_W = true;
+            }else if(action == GLFW_RELEASE){
+                inputState.key_W = false;
+            }
+            break;
+        }
+        case GLFW_KEY_A:
+        {
+            if(action == GLFW_PRESS){
+                inputState.key_A = true;
+            }else if(action == GLFW_RELEASE){
+                inputState.key_A = false;
+            }
+            break;
+        }
+        case GLFW_KEY_S:
+        {
+            if(action == GLFW_PRESS){
+                inputState.key_S = true;
+            }else if(action == GLFW_RELEASE){
+                inputState.key_S = false;
+            }
+            break;
+        }
+        case GLFW_KEY_D:
+        {
+            if(action == GLFW_PRESS){
+                inputState.key_D = true;
+            }else if(action == GLFW_RELEASE){
+                inputState.key_D = false;
+            }
+            break;
+        }
+        case GLFW_KEY_ESCAPE:
+        {
+            if(action == GLFW_PRESS){
+                inputState.key_Escape = true;
+                glfwSetWindowShouldClose(window, GLFW_TRUE);
+            }else if(action == GLFW_RELEASE){
+                inputState.key_Escape = false;
+            }
+            break;
+        }
     }
 
 }
