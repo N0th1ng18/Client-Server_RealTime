@@ -88,6 +88,8 @@ int createObject(RenderState* renderState, const char* path, int width, int heig
 
     /* READ FROM "PATH" TO GET OBJECT RESOURCES & ATTRIBUTES */
 
+    //Check Max Objects
+
     renderState->objects[renderState->num_objects].textureID = 0;
     renderState->objects[renderState->num_objects].vaoID = 0;
     renderState->objects[renderState->num_objects].programID = 0;

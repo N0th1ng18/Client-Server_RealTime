@@ -27,6 +27,12 @@ struct WindowState{
 	bool updateViewport = true;
 	const GLFWvidmode* mode;
 	GLFWwindow* window;
+	//Inputs
+	bool key_Escape = false;
+	bool key_W = false;
+	bool key_A = false;
+	bool key_S = false;
+	bool key_D = false;
 };
 struct OpenGLState{
     //Loop
@@ -38,14 +44,6 @@ struct OpenGLState{
 	GLenum depth_Test_Type = GL_LESS;
 	bool isCulling = true;
 };
-struct InputState{
-	//Inputs
-	bool key_Escape = false;
-	bool key_W = false;
-	bool key_A = false;
-	bool key_S = false;
-	bool key_D = false;
-}inputState;
 
 //Main Functions
 int initEngine(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState);

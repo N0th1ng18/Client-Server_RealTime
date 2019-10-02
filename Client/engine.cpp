@@ -42,7 +42,6 @@ int Engine::initEngine(WindowState* windowState, OpenGLState* openGLState, Rende
     createWindow(windowState);
     loadWindowState(windowState);
     loadInputState(windowState, Engine::input);
-    Engine::inputState = {};
 	glewExperimental = true;
 	if (glewInit() != GLEW_OK) {std::cout << "Failed to initialize GLEW\n"; return 1;}
     loadOpenGLState(openGLState);
@@ -126,54 +125,64 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
 
 void Engine::input(GLFWwindow* window, int key, int scancode, int action, int mods){
 
+    //Get window Data from window
+    void * data = glfwGetWindowUserPointer(window);
+    WindowState* windowState = static_cast<WindowState*>(data);
+
     switch(key){
         case GLFW_KEY_W:
         {
             if(action == GLFW_PRESS){
-                inputState.key_W = true;
+                windowState->key_W = true;
             }else if(action == GLFW_RELEASE){
-                inputState.key_W = false;
+                windowState->key_W = false;
             }
             break;
         }
         case GLFW_KEY_A:
         {
             if(action == GLFW_PRESS){
-                inputState.key_A = true;
+                windowState->key_A = true;
             }else if(action == GLFW_RELEASE){
-                inputState.key_A = false;
+                windowState->key_A = false;
             }
             break;
         }
         case GLFW_KEY_S:
         {
             if(action == GLFW_PRESS){
-                inputState.key_S = true;
+                windowState->key_S = true;
             }else if(action == GLFW_RELEASE){
-                inputState.key_S = false;
+                windowState->key_S = false;
             }
             break;
         }
         case GLFW_KEY_D:
         {
             if(action == GLFW_PRESS){
-                inputState.key_D = true;
+                windowState->key_D = true;
             }else if(action == GLFW_RELEASE){
-                inputState.key_D = false;
+                windowState->key_D = false;
             }
             break;
         }
         case GLFW_KEY_ESCAPE:
         {
             if(action == GLFW_PRESS){
-                inputState.key_Escape = true;
-                glfwSetWindowShouldClose(window, GLFW_TRUE);
+                windowState->key_Escape = true;
+                glfwSetWindowShouldClose(window, GLFW_TRUE);    //Doesnt full close out of the window, solve this
             }else if(action == GLFW_RELEASE){
-                inputState.key_Escape = false;
+                windowState->key_Escape = false;
             }
             break;
         }
     }
+
+    std::cout << "W: " << windowState->key_W << std::endl;
+    std::cout << "A: " << windowState->key_A << std::endl;
+    std::cout << "S: " << windowState->key_S << std::endl;
+    std::cout << "D: " << windowState->key_D << std::endl;
+    std::cout << "Escape: " << windowState->key_Escape << std::endl;
 
 }
 
@@ -267,6 +276,9 @@ void Engine::loadWindowState(WindowState* windowState){
 }
 
 void Engine::loadInputState(WindowState* windowState, GLFWkeyfun glfwkeyfun){
+
+    //Set glfwSetWindowUserPoint
+    glfwSetWindowUserPointer(windowState->window, windowState);
 
     glfwSetInputMode(windowState->window, GLFW_STICKY_KEYS, GL_TRUE);
 	//glfwSetInputMode(windowState->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
