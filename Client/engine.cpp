@@ -5,8 +5,8 @@
 
     To do:
         * Multiplayer Only - first thing is connect to a server.
-        * Menu Loader          
-        *   - Process Inputs
+        * Menu Loader         
+        *   - Integration and Update 
         *   - Text                                                                  (2 week)                     
         *   - Buttons                                                               (1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
@@ -29,6 +29,10 @@
 
     Server:                                                                         
         * Max Players Per Game is 4.
+        * 
+    
+    Other:
+        *   - Process Inputs
         
 
 
@@ -85,7 +89,7 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
     LARGE_INTEGER fpsEndTime;
     QueryPerformanceCounter(&fpsStartTime);
 
-    while(openGLState->isRunning){
+    while(openGLState->isRunning && !glfwWindowShouldClose(windowState->window)){
         QueryPerformanceCounter(&newCycles);
         frameTime.QuadPart = ((newCycles.QuadPart - oldCycles.QuadPart) * 1000000LL) / frequency.QuadPart;
         oldCycles.QuadPart = newCycles.QuadPart;
