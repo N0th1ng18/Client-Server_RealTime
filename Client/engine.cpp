@@ -6,6 +6,7 @@
     To do:
         * Multiplayer Only - first thing is connect to a server.
         * Menu Loader          
+        *   - Process Inputs
         *   - Text                                                                  (2 week)                     
         *   - Buttons                                                               (1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
@@ -84,7 +85,7 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
     LARGE_INTEGER fpsEndTime;
     QueryPerformanceCounter(&fpsStartTime);
 
-    while(openGLState->isRunning && !glfwWindowShouldClose(windowState->window)){
+    while(openGLState->isRunning){
         QueryPerformanceCounter(&newCycles);
         frameTime.QuadPart = ((newCycles.QuadPart - oldCycles.QuadPart) * 1000000LL) / frequency.QuadPart;
         oldCycles.QuadPart = newCycles.QuadPart;
@@ -170,7 +171,6 @@ void Engine::input(GLFWwindow* window, int key, int scancode, int action, int mo
         {
             if(action == GLFW_PRESS){
                 windowState->key_Escape = true;
-                glfwSetWindowShouldClose(window, GLFW_TRUE);    //Doesnt full close out of the window, solve this
             }else if(action == GLFW_RELEASE){
                 windowState->key_Escape = false;
             }
