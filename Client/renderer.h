@@ -89,6 +89,19 @@ struct VAO{
     GLuint indices_size;
 };
 
+struct Camera{
+    //Position
+    glm::vec3 pos;
+    glm::vec3 vel;
+    glm::vec3 acc;
+    //Transforms
+    glm::vec3 offset;
+    glm::vec3 scale;
+    glm::vec3 rotate;
+    //Matrix
+    glm::mat4 uniform_mvp[3] = {glm::mat4(1.0f), glm::mat4(1.0f), glm::mat4(1.0f)}; // {Model, View, Projection}
+};
+
 struct Object{
     GLuint programID;
     GLuint vaoID;
@@ -98,6 +111,7 @@ struct Object{
     glm::vec3 vel;
     glm::vec3 acc;
     //Transforms
+    glm::vec3 offset;
     glm::vec3 scale;
     glm::vec3 rotate;
     //Matrix

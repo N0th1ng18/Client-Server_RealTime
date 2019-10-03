@@ -6,6 +6,7 @@
     To do:
         * Multiplayer Only - first thing is connect to a server.
         * Menu Loader         
+        *   - Add and Remove Objects, Cameras, etc.
         *   - Integration and Update 
         *   - Text                                                                  (2 week)                     
         *   - Buttons                                                               (1 day)

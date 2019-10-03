@@ -95,17 +95,20 @@ int createObject(RenderState* renderState, const char* path, int width, int heig
     renderState->objects[renderState->num_objects].programID = 0;
 
     //Initial Position
-    renderState->objects[renderState->num_objects].pos = glm::vec3(3.0f, 3.0f, 0.0f);
-    renderState->objects[renderState->num_objects].scale = glm::vec3(100.0f, 100.0f, 1.0f);
-    renderState->objects[renderState->num_objects].rotate = glm::vec3(0.0f, 0.0f, glm::radians(30.0f));
+    renderState->objects[renderState->num_objects].offset = glm::vec3(0.0f, 0.0f, 0.0f);
+    renderState->objects[renderState->num_objects].pos = glm::vec3(0.0f, 0.0f, 0.0f);
+    renderState->objects[renderState->num_objects].scale = glm::vec3(200.0f, 200.0f, 1.0f);
+    renderState->objects[renderState->num_objects].rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
 
-    //Model Matrix
+    //Transformation Matrix
+    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::scale(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].scale);// Scale
+    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::rotate(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
+    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::rotate(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
+    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::rotate(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
+    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::translate(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].pos);// Translate
     //View Matrix
-    renderState->objects[renderState->num_objects].uniform_mvp[1] = glm::scale(renderState->objects[renderState->num_objects].uniform_mvp[1], renderState->objects[renderState->num_objects].scale);// Scale
-    renderState->objects[renderState->num_objects].uniform_mvp[1] = glm::rotate(renderState->objects[renderState->num_objects].uniform_mvp[1], renderState->objects[renderState->num_objects].rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
-    renderState->objects[renderState->num_objects].uniform_mvp[1] = glm::rotate(renderState->objects[renderState->num_objects].uniform_mvp[1], renderState->objects[renderState->num_objects].rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
-    renderState->objects[renderState->num_objects].uniform_mvp[1] = glm::rotate(renderState->objects[renderState->num_objects].uniform_mvp[1], renderState->objects[renderState->num_objects].rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
-    renderState->objects[renderState->num_objects].uniform_mvp[1] = glm::translate(renderState->objects[renderState->num_objects].uniform_mvp[1], renderState->objects[renderState->num_objects].pos);// Translate
+    //Add Camera and active camera's view matrix is sent for world Objects
+
     //Projection Matrix
     renderState->objects[renderState->num_objects].uniform_mvp[2] = glm::ortho<float>(0.0f, static_cast<float>(width), 0.0f,  static_cast<float>(height),  -1.0f, 1.0f);
 
