@@ -156,9 +156,6 @@ GLuint loadShader(const char *vertex_path, const char *fragment_path, RenderReso
         return 1;
     }
 
-    const GLchar* vPos = "vPos";
-    const GLchar* vTex = "vTex";
-
     // Assign Attrib Locations
     glUseProgram(program);
     std::vector<int>::iterator i;

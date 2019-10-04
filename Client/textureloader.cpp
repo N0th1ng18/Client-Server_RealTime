@@ -35,7 +35,9 @@ GLuint loadTexture(const char *filePath, RenderResources* renderResources){
     //Free image from memory
     SOIL_free_image_data(image);
 
-    //Add Texture to Render State
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    //Add Texture to Render Resources
     addTexture(renderResources, texture);
 
     return 0;

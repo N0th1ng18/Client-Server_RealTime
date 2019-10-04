@@ -94,12 +94,13 @@ struct Camera{
     glm::vec3 pos;
     glm::vec3 vel;
     glm::vec3 acc;
-    //Transforms
+    //Transforms for View
     glm::vec3 offset;
     glm::vec3 scale;
     glm::vec3 rotate;
     //Matrix
-    glm::mat4 uniform_mvp[3] = {glm::mat4(1.0f), glm::mat4(1.0f), glm::mat4(1.0f)}; // {Model, View, Projection}
+    glm::mat4 projection = glm::mat4(1.0f);
+    glm::mat4 view = glm::mat4(1.0f);
 };
 
 struct Object{
@@ -115,7 +116,7 @@ struct Object{
     glm::vec3 scale;
     glm::vec3 rotate;
     //Matrix
-    glm::mat4 uniform_mvp[3] = {glm::mat4(1.0f), glm::mat4(1.0f), glm::mat4(1.0f)}; // {Model, View, Projection}
+    glm::mat4 uniform_mvp[3] = {glm::mat4(1.0f)/*remove after*/, glm::mat4(1.0f), glm::mat4(1.0f)/*Remove before*/}; // {Transformation, View, Projection} create scene -> sends projection and view matrix
     //...
 };
 
@@ -140,17 +141,26 @@ struct RenderResources{
     GLuint vbos[MAX_VBOS];
 	Program programs[MAX_PROGRAMS];
     FontFile fontFiles[MAX_FONTFILES];
-    //Object Files -> enum to discribe object type
 };
 
 struct RenderState{
-    int num_objects = 0;
-    int num_texts = 0;
+    //Currently Bound
+    GLuint bound_program = 0;
+    GLuint bound_vao = 0;
+    GLuint bound_texture = 0;
 
     //Cameras
+    //active camera
+    //num_cameras
+    //Camera Cameras[MAX_CAMERAS];
+
+    //Objects
+    int num_objects = 0;
     Object objects[MAX_OBJECTS];
+
+    //Texts
+    int num_texts = 0;
     Text texts[MAX_TEXTS];
-    //Text
     
 };
 

@@ -1,22 +1,32 @@
 #include "renderer.h"
 
 //Functions
-void sendUniforms(RenderResources* renderResources, RenderState* renderState, int i);
+void sendObjectUniforms(RenderResources* renderResources, RenderState* renderState, int i);
 
+//Render Cameras
 
 //Render
 void renderObjects(RenderResources* renderResources, RenderState* renderState){
 
     for(int i=0; i < renderState->num_objects; i++){
 
-        //Bind Program
-        glUseProgram(renderResources->programs[renderState->objects[i].programID].programID);
+        //Bind Program (Check if program is already bound)
+        if(renderResources->programs[renderState->objects[i].programID].programID != renderState->bound_program){
+            glUseProgram(renderResources->programs[renderState->objects[i].programID].programID);
+            renderState->bound_program = renderResources->programs[renderState->objects[i].programID].programID;
+        }
         //Bind VAO
-        glBindVertexArray(renderResources->vaos[renderState->objects[i].vaoID].id);
+        if(renderResources->vaos[renderState->objects[i].vaoID].id != renderState->bound_vao){
+            glBindVertexArray(renderResources->vaos[renderState->objects[i].vaoID].id);
+            renderState->bound_vao = renderResources->vaos[renderState->objects[i].vaoID].id;
+        }
         //Bind Texture
-        glBindTexture(GL_TEXTURE_2D, renderResources->textures[renderState->objects[i].textureID]);
+        if(renderResources->textures[renderState->objects[i].textureID] != renderState->bound_texture){
+            glBindTexture(GL_TEXTURE_2D, renderResources->textures[renderState->objects[i].textureID]);
+            renderState->bound_texture = renderResources->textures[renderState->objects[i].textureID];
+        }
         //Uniforms
-        sendUniforms(renderResources, renderState, i);
+        sendObjectUniforms(renderResources, renderState, i);
         //Draw
         glDrawElements(GL_TRIANGLES, renderResources->vaos[renderState->objects[i].vaoID].indices_size, GL_UNSIGNED_INT, (void*)0);
 
@@ -125,7 +135,7 @@ int createText(RenderState* renderState, const char* path){
     return renderState->num_texts++;
 }
 
-void sendUniforms(RenderResources* renderResources, RenderState* renderState, int i){
+void sendObjectUniforms(RenderResources* renderResources, RenderState* renderState, int i){
 
         //Vertex Shader Uniforms
         for(int j=0; j < renderResources->programs[renderState->objects[i].programID].num_vert_uniforms; j++){

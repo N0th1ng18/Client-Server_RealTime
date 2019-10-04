@@ -4,10 +4,14 @@
     Nicholas Frey
 
     To do:
-        * Multiplayer Only - first thing is connect to a server.
-        * Menu Loader         
+        *   - Multiplayer Only - first thing is connect to a server.
+        *   - Menu Loader         
         *   - Add and Remove Objects, Cameras, etc.
+        *   - Dynamic VBOs vs Static VBOs (All Static Objects in 1 vbo)(All dynamic objects in 1 vbo) - Optimization
         *   - Integration and Update 
+        *   - Organize Rendering Setup (How to send View and Projection Uniforms for each program)
+        * 
+        *   - Render Cameras(Projection and view matrix uniforms)                   (1 day)
         *   - Text                                                                  (2 week)                     
         *   - Buttons                                                               (1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)

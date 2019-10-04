@@ -26,7 +26,7 @@ void createStaticObject_VAO(Model* model, RenderResources* renderResources){
     //Unbind VAO
     glBindVertexArray(0);
 
-    //Add to RenderState
+    //Add to Render Resources
     addVAO_Elements(renderResources, vao, model->indices_size);
 
     delete[] model->buffer;
