@@ -20,12 +20,13 @@
 #define MAX_FONTFILES 1
 
 //Entities
+#define MAX_CAMERAS 1
 #define MAX_OBJECTS 1
 #define MAX_TEXTS 1
 
 //Structures
 struct Program{
-    GLuint programID; 
+    GLuint id; 
     //Layouts - Used for VAO creation
     int num_layouts = 0;
     std::vector<int> layout_locations;
@@ -90,6 +91,7 @@ struct VAO{
 };
 
 struct Camera{
+    GLuint program_index;
     //Position
     glm::vec3 pos;
     glm::vec3 vel;
@@ -104,9 +106,9 @@ struct Camera{
 };
 
 struct Object{
-    GLuint programID;
-    GLuint vaoID;
-    GLuint textureID;
+    GLuint program_index;
+    GLuint vao_index;
+    GLuint texture_index;
     //Position
     glm::vec3 pos;
     glm::vec3 vel;
@@ -116,15 +118,15 @@ struct Object{
     glm::vec3 scale;
     glm::vec3 rotate;
     //Matrix
-    glm::mat4 uniform_mvp[3] = {glm::mat4(1.0f)/*remove after*/, glm::mat4(1.0f), glm::mat4(1.0f)/*Remove before*/}; // {Transformation, View, Projection} create scene -> sends projection and view matrix
+    glm::mat4 transformation = glm::mat4(1.0f);
     //...
 };
 
 struct Text{
-    GLuint programID;
-    GLuint vaoID;
-    GLuint textureID;
-    int fontFile;
+    GLuint program_index;
+    GLuint vao_index;
+    GLuint texture_index;
+    int fontFile_index;
     //glm::vec3 pos;
     //...
 };
@@ -145,14 +147,14 @@ struct RenderResources{
 
 struct RenderState{
     //Currently Bound
-    GLuint bound_program = 0;
-    GLuint bound_vao = 0;
-    GLuint bound_texture = 0;
+    GLuint bound_program_index = MAX_PROGRAMS;
+    GLuint bound_vao_index = MAX_VAOS;
+    GLuint bound_texture_index = MAX_TEXTURES;
 
     //Cameras
-    //active camera
-    //num_cameras
-    //Camera Cameras[MAX_CAMERAS];
+    int activeCamera;
+    int num_cameras = 0;
+    Camera cameras[MAX_CAMERAS];
 
     //Objects
     int num_objects = 0;
@@ -175,7 +177,8 @@ int addFontFile(RenderResources* renderResources);
 //Delete Resources
 
 //Add Entities
-int createObject(RenderState* renderState, const char* path, int width, int height);
+int createCamera(RenderState* renderState, int width, int height);
+int createObject(RenderState* renderState, const char* path);
 int createText(RenderState* renderState, const char* path);
 
 //Remove Entities
@@ -183,6 +186,7 @@ int createText(RenderState* renderState, const char* path);
 //Destroy Entities
 
 //Render Functions
+void renderCameras(RenderResources* renderResources, RenderState* renderState);
 void renderObjects(RenderResources* renderResources, RenderState* renderState);
 void renderTexts(RenderResources* renderResources, RenderState* renderState); //renderState, Font, Color, Pos, Size, Orientation
 

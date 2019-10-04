@@ -176,7 +176,7 @@ GLuint loadShader(const char *vertex_path, const char *fragment_path, RenderReso
     glDeleteShader(fragShader);
 
     //Add Program to RenderResources
-    renderResources->programs[renderResources->num_programs].programID = program;
+    renderResources->programs[renderResources->num_programs].id = program;
 
     addProgram(renderResources);
 

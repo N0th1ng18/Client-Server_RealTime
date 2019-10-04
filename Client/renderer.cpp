@@ -3,7 +3,48 @@
 //Functions
 void sendObjectUniforms(RenderResources* renderResources, RenderState* renderState, int i);
 
+void bindProgram(GLuint program_index, RenderResources* renderResources, RenderState* renderState){
+    if(program_index != renderState->bound_program_index){
+        glUseProgram(renderResources->programs[program_index].id);
+        renderState->bound_program_index = program_index;
+        std::cout << "Program bound = " << renderResources->programs[program_index].id << std::endl;
+    }
+}
+void bindVAO(GLuint vao_index, RenderResources* renderResources, RenderState* renderState){
+    if(vao_index != renderState->bound_vao_index){
+        glBindVertexArray(renderResources->vaos[vao_index].id);
+        renderState->bound_vao_index = vao_index;
+        std::cout << "VAO bound = " << renderResources->vaos[vao_index].id << std::endl;
+    }
+}
+void bindTexture(GLuint texture_index, RenderResources* renderResources, RenderState* renderState){
+    if(texture_index != renderState->bound_texture_index){
+        glBindTexture(GL_TEXTURE_2D, renderResources->textures[texture_index]);
+        renderState->bound_texture_index = texture_index;
+        std::cout << "Texture bound = " << renderResources->textures[texture_index] << std::endl;
+    }
+}
+
 //Render Cameras
+void renderCameras(RenderResources* renderResources, RenderState* renderState){
+
+    for(int i=0; i < renderState->num_cameras; i++){
+
+        //Bind Program (Check if program is already bound)
+        bindProgram(renderState->cameras[i].program_index, renderResources, renderState);
+        //Uniforms
+        glUniformMatrix4fv(glGetUniformLocation(
+                        renderResources->programs[renderState->cameras[i].program_index].id, 
+                        "projection"),
+                        1, GL_FALSE, &renderState->cameras[i].projection[0][0]);
+        glUniformMatrix4fv(glGetUniformLocation(
+                        renderResources->programs[renderState->cameras[i].program_index].id, 
+                        "view"),
+                        1, GL_FALSE, &renderState->cameras[i].view[0][0]);
+
+    }
+
+}
 
 //Render
 void renderObjects(RenderResources* renderResources, RenderState* renderState){
@@ -11,24 +52,23 @@ void renderObjects(RenderResources* renderResources, RenderState* renderState){
     for(int i=0; i < renderState->num_objects; i++){
 
         //Bind Program (Check if program is already bound)
-        if(renderResources->programs[renderState->objects[i].programID].programID != renderState->bound_program){
-            glUseProgram(renderResources->programs[renderState->objects[i].programID].programID);
-            renderState->bound_program = renderResources->programs[renderState->objects[i].programID].programID;
-        }
+        bindProgram(renderState->objects[i].program_index, renderResources, renderState);
         //Bind VAO
-        if(renderResources->vaos[renderState->objects[i].vaoID].id != renderState->bound_vao){
-            glBindVertexArray(renderResources->vaos[renderState->objects[i].vaoID].id);
-            renderState->bound_vao = renderResources->vaos[renderState->objects[i].vaoID].id;
-        }
+        bindVAO(renderState->objects[i].vao_index, renderResources, renderState);
         //Bind Texture
-        if(renderResources->textures[renderState->objects[i].textureID] != renderState->bound_texture){
-            glBindTexture(GL_TEXTURE_2D, renderResources->textures[renderState->objects[i].textureID]);
-            renderState->bound_texture = renderResources->textures[renderState->objects[i].textureID];
-        }
+        bindTexture(renderState->objects[i].texture_index, renderResources, renderState);
         //Uniforms
-        sendObjectUniforms(renderResources, renderState, i);
+        glUniformMatrix4fv(glGetUniformLocation(
+                        renderResources->programs[renderState->objects[i].program_index].id, 
+                        "transformation"),
+                        1, GL_FALSE, &renderState->objects[i].transformation[0][0]);
+        glUniform1i(glGetUniformLocation(
+                                renderResources->textures[renderState->objects[i].texture_index], 
+                                "texture1"), 
+                                0); 
+
         //Draw
-        glDrawElements(GL_TRIANGLES, renderResources->vaos[renderState->objects[i].vaoID].indices_size, GL_UNSIGNED_INT, (void*)0);
+        glDrawElements(GL_TRIANGLES, renderResources->vaos[renderState->objects[i].vao_index].indices_size, GL_UNSIGNED_INT, (void*)0);
 
     }
 }
@@ -94,15 +134,38 @@ int addFontFile(RenderResources* renderResources){
 }
 
 //Add Entities
-int createObject(RenderState* renderState, const char* path, int width, int height){
+int createCamera(RenderState* renderState, int width, int height){
+
+    if(renderState->num_cameras > MAX_CAMERAS){
+        return renderState->num_cameras;
+    }
+
+    renderState->cameras[renderState->num_cameras].program_index = 0;
+
+    //Initial Position
+    renderState->cameras[renderState->num_cameras].pos = glm::vec3(200.0f, 200.0f, 0.0f);
+
+    //Projection Matrix
+    renderState->cameras[renderState->num_cameras].projection = glm::ortho<float>(0.0f, static_cast<float>(width), 0.0f,  static_cast<float>(height),  -1.0f, 1.0f);
+
+    //View Matrix
+    renderState->cameras[renderState->num_cameras].view = glm::translate(renderState->cameras[renderState->num_cameras].view, renderState->cameras[renderState->num_cameras].pos);
+
+    return renderState->num_cameras++;
+}
+
+int createObject(RenderState* renderState, const char* path){
 
     /* READ FROM "PATH" TO GET OBJECT RESOURCES & ATTRIBUTES */
 
     //Check Max Objects
+    if(renderState->num_objects > MAX_OBJECTS){
+        return renderState->num_objects;
+    }
 
-    renderState->objects[renderState->num_objects].textureID = 0;
-    renderState->objects[renderState->num_objects].vaoID = 0;
-    renderState->objects[renderState->num_objects].programID = 0;
+    renderState->objects[renderState->num_objects].program_index = 0;
+    renderState->objects[renderState->num_objects].vao_index = 0;
+    renderState->objects[renderState->num_objects].texture_index = 0;
 
     //Initial Position
     renderState->objects[renderState->num_objects].offset = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -111,57 +174,53 @@ int createObject(RenderState* renderState, const char* path, int width, int heig
     renderState->objects[renderState->num_objects].rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
 
     //Transformation Matrix
-    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::scale(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].scale);// Scale
-    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::rotate(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
-    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::rotate(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
-    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::rotate(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
-    renderState->objects[renderState->num_objects].uniform_mvp[0] = glm::translate(renderState->objects[renderState->num_objects].uniform_mvp[0], renderState->objects[renderState->num_objects].pos);// Translate
-    //View Matrix
-    //Add Camera and active camera's view matrix is sent for world Objects
-
-    //Projection Matrix
-    renderState->objects[renderState->num_objects].uniform_mvp[2] = glm::ortho<float>(0.0f, static_cast<float>(width), 0.0f,  static_cast<float>(height),  -1.0f, 1.0f);
+    renderState->objects[renderState->num_objects].transformation = glm::scale(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].scale);// Scale
+    renderState->objects[renderState->num_objects].transformation = glm::rotate(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
+    renderState->objects[renderState->num_objects].transformation = glm::rotate(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
+    renderState->objects[renderState->num_objects].transformation = glm::rotate(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
+    renderState->objects[renderState->num_objects].transformation = glm::translate(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].pos);// Translate
 
     return renderState->num_objects++;
 }
 
 int createText(RenderState* renderState, const char* path){
 
-    renderState->texts[renderState->num_texts].textureID = 1;
-    renderState->texts[renderState->num_texts].vaoID = 1;
-    renderState->texts[renderState->num_texts].programID = 1;
-    renderState->texts[renderState->num_texts].fontFile = 0;
+    renderState->texts[renderState->num_texts].texture_index = 1;
+    renderState->texts[renderState->num_texts].vao_index = 1;
+    renderState->texts[renderState->num_texts].program_index = 1;
+    renderState->texts[renderState->num_texts].fontFile_index = 0;
 
     return renderState->num_texts++;
 }
 
-void sendObjectUniforms(RenderResources* renderResources, RenderState* renderState, int i){
 
-        //Vertex Shader Uniforms
-        for(int j=0; j < renderResources->programs[renderState->objects[i].programID].num_vert_uniforms; j++){
+// void sendObjectUniforms(RenderResources* renderResources, RenderState* renderState, int i){
+
+//         //Vertex Shader Uniforms
+//         for(int j=0; j < renderResources->programs[renderState->objects[i].programID].num_vert_uniforms; j++){
             
-            if(renderResources->programs[renderState->objects[i].programID].uniform_vert_types[j] == "mat4"){
+//             if(renderResources->programs[renderState->objects[i].programID].uniform_vert_types[j] == "mat4"){
 
-                glUniformMatrix4fv(glGetUniformLocation(
-                        renderResources->programs[renderState->objects[i].programID].programID, 
-                        renderResources->programs[renderState->objects[i].programID].uniform_vert_names[j].c_str()),
-                        1, GL_FALSE, glm::value_ptr(renderState->objects[i].uniform_mvp[j]));
+//                 glUniformMatrix4fv(glGetUniformLocation(
+//                         renderResources->programs[renderState->objects[i].programID].programID, 
+//                         renderResources->programs[renderState->objects[i].programID].uniform_vert_names[j].c_str()),
+//                         1, GL_FALSE, glm::value_ptr(renderState->objects[i].uniform_mvp[j]));
 
-            }else{
-                std::cout << "Undefined Vertex Shader Uniform" << std::endl;
-            }
-        }
-        //Fragment Shader Uniforms
-        for(int j=0; j < renderResources->programs[renderState->objects[i].programID].num_frag_uniforms; j++){
+//             }else{
+//                 std::cout << "Undefined Vertex Shader Uniform" << std::endl;
+//             }
+//         }
+//         //Fragment Shader Uniforms
+//         for(int j=0; j < renderResources->programs[renderState->objects[i].programID].num_frag_uniforms; j++){
 
-            if(renderResources->programs[renderState->objects[i].programID].uniform_frag_types[j] == "sampler2D"){
-                glUniform1i(glGetUniformLocation(
-                        renderResources->programs[renderState->objects[i].programID].programID, 
-                        renderResources->programs[renderState->objects[i].programID].uniform_frag_names[j].c_str()), 
-                        j); 
-            }else{
-                std::cout << "Undefined Fragment Shader Uniform" << std::endl;
-            }
-        }
+//             if(renderResources->programs[renderState->objects[i].programID].uniform_frag_types[j] == "sampler2D"){
+//                 glUniform1i(glGetUniformLocation(
+//                         renderResources->programs[renderState->objects[i].programID].programID, 
+//                         renderResources->programs[renderState->objects[i].programID].uniform_frag_names[j].c_str()), 
+//                         j); 
+//             }else{
+//                 std::cout << "Undefined Fragment Shader Uniform" << std::endl;
+//             }
+//         }
 
-}
+// }

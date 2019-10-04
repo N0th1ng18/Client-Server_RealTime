@@ -187,11 +187,11 @@ void Engine::input(GLFWwindow* window, int key, int scancode, int action, int mo
         }
     }
 
-    std::cout << "W: " << windowState->key_W << std::endl;
-    std::cout << "A: " << windowState->key_A << std::endl;
-    std::cout << "S: " << windowState->key_S << std::endl;
-    std::cout << "D: " << windowState->key_D << std::endl;
-    std::cout << "Escape: " << windowState->key_Escape << std::endl;
+    // std::cout << "W: " << windowState->key_W << std::endl;
+    // std::cout << "A: " << windowState->key_A << std::endl;
+    // std::cout << "S: " << windowState->key_S << std::endl;
+    // std::cout << "D: " << windowState->key_D << std::endl;
+    // std::cout << "Escape: " << windowState->key_Escape << std::endl;
 
 }
 
@@ -205,6 +205,7 @@ void Engine::render(WindowState* windowState, RenderResources* renderResources, 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //render state needs to have a main_menu, settings, join_server, ect. (Maps) -> can be loaded from file.
+    renderCameras(renderResources, renderState);
     renderObjects(renderResources, renderState);
     renderTexts(renderResources, renderState);
 
@@ -340,11 +341,26 @@ int Engine::loadRenderer(WindowState* windowState, RenderResources* renderResour
         return 1;
     }
 
+    //Create Cameras
+    createCamera(renderState, windowState->width, windowState->height);
+
     //Create Objects
-    createObject(renderState, "", windowState->width, windowState->height);
+    createObject(renderState, "");
 
     //Create Fonts      (read from file)  
     createText(renderState, "");
+
+    std::cout << "------------Render Resources---------------" << std::endl;
+    std::cout << "Num_Programs  \t=\t" << renderResources->num_programs << std::endl;
+    std::cout << "Num_VAOs      \t=\t" << renderResources->num_vaos << std::endl;
+    std::cout << "Num_VBOs      \t=\t" << renderResources->num_vbos << std::endl;
+    std::cout << "Num_Textures  \t=\t" << renderResources->num_textures << std::endl;
+    std::cout << "Num_FontFiles \t=\t" << renderResources->num_fontFiles << std::endl;
+    std::cout << "--------------Render State-----------------" << std::endl;
+    std::cout << "Num_Cameras   \t=\t" << renderState->num_cameras << std::endl;
+    std::cout << "Num_Objects   \t=\t" << renderState->num_objects << std::endl;
+    std::cout << "Num_Texts     \t=\t" << renderState->num_texts << std::endl;
+
 
     return 0;
 }
