@@ -28,6 +28,7 @@ void bindTexture(GLuint texture_index, RenderResources* renderResources, RenderS
 //Render Cameras
 void renderCameras(RenderResources* renderResources, RenderState* renderState){
 
+    //Only render Active Camera
     for(int i=0; i < renderState->num_cameras; i++){
 
         //Bind Program (Check if program is already bound)
@@ -134,7 +135,7 @@ int addFontFile(RenderResources* renderResources){
 }
 
 //Add Entities
-int createCamera(RenderState* renderState, int width, int height){
+int addCamera(RenderState* renderState, int width, int height){
 
     if(renderState->num_cameras > MAX_CAMERAS){
         return renderState->num_cameras;
@@ -154,9 +155,8 @@ int createCamera(RenderState* renderState, int width, int height){
     return renderState->num_cameras++;
 }
 
-int createObject(RenderState* renderState, const char* path){
+int addObject(RenderState* renderState){
 
-    /* READ FROM "PATH" TO GET OBJECT RESOURCES & ATTRIBUTES */
 
     //Check Max Objects
     if(renderState->num_objects > MAX_OBJECTS){
@@ -183,7 +183,7 @@ int createObject(RenderState* renderState, const char* path){
     return renderState->num_objects++;
 }
 
-int createText(RenderState* renderState, const char* path){
+int addText(RenderState* renderState){
 
     renderState->texts[renderState->num_texts].texture_index = 1;
     renderState->texts[renderState->num_texts].vao_index = 1;

@@ -6,12 +6,20 @@
     To do:
         *   - Multiplayer Only - first thing is connect to a server.
         *   - Menu Loader         
-        *   - Add and Remove Objects, Cameras, etc.
         *   - Dynamic VBOs vs Static VBOs (All Static Objects in 1 vbo)(All dynamic objects in 1 vbo) - Optimization
         *   - Integration and Update 
-        *   - Organize Rendering Setup (How to send View and Projection Uniforms for each program)
+        *   - Clean up Program uniform structure
         * 
-        *   - Render Cameras(Projection and view matrix uniforms)                   (1 day)
+        *   - Engine Setup                                                                              -Done
+        *   - Window Setup                                                                              -Done
+        *   - OpenGL Setup                                                                              -Done
+        *   - Renderer Setup                                                                            -Done
+        *   - Model Loader                                                                              -Done
+        *   - Program Loader                                                                            -Done
+        *   - Texture Loader                                                                            -Done
+        *   - Process Inputs                                                                            -Done
+        *   - Render Cameras(Projection and view matrix uniforms)                   (1 day)             -Done
+        *   - Add and Remove Objects, Cameras, etc.                                 (1 day)
         *   - Text                                                                  (2 week)                     
         *   - Buttons                                                               (1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
@@ -34,10 +42,7 @@
 
     Server:                                                                         
         * Max Players Per Game is 4.
-        * 
     
-    Other:
-        *   - Process Inputs
         
 
 
@@ -342,13 +347,13 @@ int Engine::loadRenderer(WindowState* windowState, RenderResources* renderResour
     }
 
     //Create Cameras
-    createCamera(renderState, windowState->width, windowState->height);
+    addCamera(renderState, windowState->width, windowState->height);
 
     //Create Objects
-    createObject(renderState, "");
+    addObject(renderState);
 
     //Create Fonts      (read from file)  
-    createText(renderState, "");
+    addText(renderState);
 
     std::cout << "------------Render Resources---------------" << std::endl;
     std::cout << "Num_Programs  \t=\t" << renderResources->num_programs << std::endl;

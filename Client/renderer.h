@@ -177,9 +177,9 @@ int addFontFile(RenderResources* renderResources);
 //Delete Resources
 
 //Add Entities
-int createCamera(RenderState* renderState, int width, int height);
-int createObject(RenderState* renderState, const char* path);
-int createText(RenderState* renderState, const char* path);
+int addCamera(RenderState* renderState, int width, int height);
+int addObject(RenderState* renderState);
+int addText(RenderState* renderState);
 
 //Remove Entities
 
