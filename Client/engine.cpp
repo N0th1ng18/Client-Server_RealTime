@@ -3,22 +3,25 @@
 /*
     Nicholas Frey
 
-    To do:
+    Notes:
+        *   - Server Max players (maybe 4)
         *   - Multiplayer Only - first thing is connect to a server.
         *   - Menu Loader         
         *   - Dynamic VBOs vs Static VBOs (All Static Objects in 1 vbo)(All dynamic objects in 1 vbo) - Optimization
         *   - Integration and Update 
         *   - Clean up Program uniform structure
-        * 
-        *   - Engine Setup                                                                              -Done
-        *   - Window Setup                                                                              -Done
-        *   - OpenGL Setup                                                                              -Done
-        *   - Renderer Setup                                                                            -Done
-        *   - Model Loader                                                                              -Done
-        *   - Program Loader                                                                            -Done
-        *   - Texture Loader                                                                            -Done
-        *   - Process Inputs                                                                            -Done
-        *   - Render Cameras(Projection and view matrix uniforms)                   (1 day)             -Done
+
+
+    To do:
+        *   - Engine Setup                                                                                  -Done       (Clean up destruction of engine)
+        *   - Window Setup                                                                                  -Done
+        *   - OpenGL Setup                                                                                  -Done
+        *   - Renderer Setup                                                                                -Done
+        *   - Model Loader                                                                                  -Done       (File import from blender not supported)
+        *   - Program Loader                                                                                -Done       (Clean up auto uniform detection)
+        *   - Texture Loader                                                                                -Done
+        *   - Process Inputs                                                                                -Done
+        *   - Render Cameras(Projection and view matrix uniforms)                   (1 day)                 -Done
         *   - Add and Remove Objects, Cameras, etc.                                 (1 day)
         *   - Text                                                                  (2 week)                     
         *   - Buttons                                                               (1 day)
@@ -31,7 +34,7 @@
         *   - Setup Basic Connection                                                (1 day)
         *   - Setup Ping Delay for testing                                          (1 day)
         *   - Setup Dump Client                                                     (1 day)
-        *   - Setup Client-Side Prediciton                                          (1 week)
+        *   - Setup Client-Side Prediction                                          (1 week)
         *   - Setup Server Reconciliation                                           (1 week)
         *   - Setup Entity Interpolation                                            (1 day)
         *   - Setup Lag Compensation                                                (1 week)
@@ -39,9 +42,6 @@
         *   - Simulation On Client-Side                                             (tbd)
         *   - Simulation Over Client-Server                                         (tbd)
         *   - Simulation with Prediction and Lag Compensation                       (tbd)
-
-    Server:                                                                         
-        * Max Players Per Game is 4.
     
         
 
