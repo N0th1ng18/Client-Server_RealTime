@@ -21,9 +21,10 @@
         *   - Program Loader                                                                                -Done       (Clean up auto uniform detection)
         *   - Texture Loader                                                                                -Done
         *   - Process Inputs                                                                                -Done
-        *   - Render Cameras(Projection and view matrix uniforms)                   (1 day)                 -Done
-        *   - Add and Remove Objects, Cameras, etc.                                 (1 day)
-        *   - Text                                                                  (2 week)                     
+        *   - Resource, State, input Files
+        *   - Render Cameras(Projection and view matrix uniforms)                   (1 day)                 -Done       (Scene defines when different types of cameras are used and when certain things are rendered)
+        *   - Add and Remove Objects, Cameras, etc.                                 (1 day)                 -Done       (Need to remove Texts)
+        *   - Distance Field Text                                                   (2 week)                            (Fixed max string length) (Dynamic Array Size for Text) (Delete Dynamic Text https://stackoverflow.com/questions/936687/how-do-i-declare-a-2d-array-in-c-using-new)           
         *   - Buttons                                                               (1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
         *   - Play Online - Host Server, Join By Ip, Back                           (less than 1 day)     
@@ -212,7 +213,7 @@ void Engine::render(WindowState* windowState, RenderResources* renderResources, 
     //render state needs to have a main_menu, settings, join_server, ect. (Maps) -> can be loaded from file.
     renderCameras(renderResources, renderState);
     renderObjects(renderResources, renderState);
-    renderTexts(renderResources, renderState);
+    renderTexts(renderResources, renderState, windowState->width, windowState->height);
 
 
     glfwSwapBuffers(windowState->window);
@@ -311,46 +312,55 @@ void Engine::loadOpenGLState(OpenGLState* openGLState){
     }else{
         glDisable(GL_CULL_FACE);
     }
-    glEnable(GL_BLEND);
+    if(openGLState->isWireframe){
+        glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+    }else{
+        glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    }
     glFrontFace(GL_CCW);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    //glEnable(GL_BLEND);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 }
 
 int Engine::loadRenderer(WindowState* windowState, RenderResources* renderResources, RenderState* renderState){
 
     //Load Textures - Create Texture Loader
-    if(loadTexture("Textures\\Test\\water.jpg", renderResources)){
-        std::cout << "Failed to load Texture." << std::endl;
-        return 1;
-    }
-    // if(loadTexture("Build\\Textures\\Fonts\\Calibri_DF.png", renderResources)){
+    // if(loadTexture("Textures\\Test\\water.jpg", renderResources)){
     //     std::cout << "Failed to load Texture." << std::endl;
     //     return 1;
     // }
+    if(loadTexture("Textures\\Fonts\\Candara.png", renderResources)){
+        std::cout << "Failed to load Texture." << std::endl;
+        return 1;
+    }
 
     //Load VAOs - VAO loader from blender
-    createStaticObject_VAO(loadModel("", renderResources), renderResources);
+    //createStaticObject_VAO(loadModel("", renderResources), renderResources);
     createDynamic2DText_VAO_VBO(renderResources);
     
     //Load Shaders          https://www.glfw.org/docs/latest/quick.html
-    if(loadShader("../Shaders/basic.vert","../Shaders/basic.frag", renderResources)){
+    // if(loadShader("../Shaders/basic.vert","../Shaders/basic.frag", renderResources)){
+    //     std::cout << "Failed to load Shader Program." << std::endl;
+    //     return 1;
+    // }
+    if(loadShader("../Shaders/text2d.vert","../Shaders/text2d.frag", renderResources)){
         std::cout << "Failed to load Shader Program." << std::endl;
         return 1;
     }
-    //LOAD SHADER FOR TEXT
 
     //Load Font Files
-    if(loadFontFile("Textures\\Fonts\\Calibri_DF.fnt", renderResources)){
+    if(loadFontFile("Textures\\Fonts\\Candara.fnt", renderResources)){
         std::cout << "Failed to load Font." << std::endl;
         return 1;
     }
 
-    //Create Cameras
+    //Create Cameras (UI Camera, Other Cameras)
     addCamera(renderState, windowState->width, windowState->height);
 
     //Create Objects
-    addObject(renderState);
+    //addObject(renderState);
 
     //Create Fonts      (read from file)  
     addText(renderState);
@@ -365,6 +375,7 @@ int Engine::loadRenderer(WindowState* windowState, RenderResources* renderResour
     std::cout << "Num_Cameras   \t=\t" << renderState->num_cameras << std::endl;
     std::cout << "Num_Objects   \t=\t" << renderState->num_objects << std::endl;
     std::cout << "Num_Texts     \t=\t" << renderState->num_texts << std::endl;
+    std::cout << "--------------------------------------------" << std::endl;
 
 
     return 0;

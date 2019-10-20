@@ -125,10 +125,24 @@ struct Object{
 struct Text{
     GLuint program_index;
     GLuint vao_index;
+    GLuint vbo_index;
     GLuint texture_index;
     int fontFile_index;
-    //glm::vec3 pos;
-    //...
+    glm::vec3 f_color;
+    float c_width;
+    float c_edge;
+    GLfloat text_buffer[6*5];
+    char* text;
+    //Position
+    glm::vec3 pos;
+    glm::vec3 vel;
+    glm::vec3 acc;
+    //Transforms
+    glm::vec3 offset;
+    glm::vec3 scale;
+    glm::vec3 rotate;
+    //Matrix
+    glm::mat4 transformation = glm::mat4(1.0f);
 };
 
 struct RenderResources{
@@ -182,12 +196,15 @@ int addObject(RenderState* renderState);
 int addText(RenderState* renderState);
 
 //Remove Entities
+void removeCamera(RenderState* renderState, int id);
+void removeObject(RenderState* renderState, int id);
+void removeText(RenderState* renderState, int id);
 
 //Destroy Entities
 
 //Render Functions
 void renderCameras(RenderResources* renderResources, RenderState* renderState);
 void renderObjects(RenderResources* renderResources, RenderState* renderState);
-void renderTexts(RenderResources* renderResources, RenderState* renderState); //renderState, Font, Color, Pos, Size, Orientation
+void renderTexts(RenderResources* renderResources, RenderState* renderState, int screen_width, int screen_height); //renderState, Font, Color, Pos, Size, Orientation
 
 #endif

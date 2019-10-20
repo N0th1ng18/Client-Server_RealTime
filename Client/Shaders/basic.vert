@@ -5,13 +5,13 @@ layout (location=1) in vec2 vTex;
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform mat4 transformation;
+uniform mat4 translation;
 
 
 out vec2 fTex;
 
 void main()
 {
-    gl_Position = projection * view * transformation * vec4(vPos, 1.0);
+    gl_Position = projection * view * translation * vec4(vPos, 1.0);
     fTex = vTex;
 };

@@ -15,6 +15,8 @@ int main(){
 	//Setup
 	windowState.isFullscreen = false;
 	openGLState.isCulling = true;
+	openGLState.isWireframe = false;
+	openGLState.clear_Color[0] = 1.0f;
 
 	//Engine
 	if(Engine::initEngine(&windowState, &openGLState, &renderResources, &renderState)){return 1;};

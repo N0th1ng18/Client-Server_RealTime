@@ -43,6 +43,7 @@ struct OpenGLState{
 	bool depth_Test = false;
 	GLenum depth_Test_Type = GL_LESS;
 	bool isCulling = true;
+	bool isWireframe = false;
 };
 
 //Main Functions

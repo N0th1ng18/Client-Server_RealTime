@@ -28,6 +28,13 @@ void bindTexture(GLuint texture_index, RenderResources* renderResources, RenderS
 //Render Cameras
 void renderCameras(RenderResources* renderResources, RenderState* renderState){
 
+    /*
+        Cameras[0]      = UI Camera
+        Cameras[1 -> n] = Other Cameras
+
+        Render Only Active Camera, then UI Camera
+    */
+
     //Only render Active Camera
     for(int i=0; i < renderState->num_cameras; i++){
 
@@ -61,12 +68,12 @@ void renderObjects(RenderResources* renderResources, RenderState* renderState){
         //Uniforms
         glUniformMatrix4fv(glGetUniformLocation(
                         renderResources->programs[renderState->objects[i].program_index].id, 
-                        "transformation"),
+                        "translation"),
                         1, GL_FALSE, &renderState->objects[i].transformation[0][0]);
         glUniform1i(glGetUniformLocation(
-                                renderResources->textures[renderState->objects[i].texture_index], 
-                                "texture1"), 
-                                0); 
+                        renderResources->textures[renderState->objects[i].texture_index], 
+                        "texture1"), 
+                        0); 
 
         //Draw
         glDrawElements(GL_TRIANGLES, renderResources->vaos[renderState->objects[i].vao_index].indices_size, GL_UNSIGNED_INT, (void*)0);
@@ -74,19 +81,147 @@ void renderObjects(RenderResources* renderResources, RenderState* renderState){
     }
 }
 
-void renderTexts(RenderResources* renderResources, RenderState* renderState){
+void renderTexts(RenderResources* renderResources, RenderState* renderState, int width, int height){
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
 
     for(int i=0; i < renderState->num_texts; i++){
         
-        //render text
+        bindProgram(renderState->texts[i].program_index, renderResources, renderState);
+        bindVAO(renderState->texts[i].vao_index, renderResources, renderState);
+        bindTexture(renderState->texts[i].texture_index, renderResources, renderState);
 
-        // glEnable(GL_BLEND);
-        // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
+        Text* txt = &renderState->texts[i];
+        FontFile* ft = &renderResources->fontFiles[renderState->texts[i].fontFile_index];
+        char* string = renderState->texts[i].text;
+        int index = -1;
+        GLfloat cursor = 0;
 
-        // glm::mat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
+        //For every character 
+        while(*string != '\0'){
 
-        // glDisable(GL_BLEND);
+            //Find Coorisponding ascii character for attributes
+            for(int j=0; j < (*ft).chars_count; j++){
+                if(string[0] == (char)(*ft).ascii_id[j]){
+                    index = j;
+                }
+            }
 
+            //Screen Width & Screen Height
+            GLfloat screen_width = (GLfloat)width;
+            GLfloat screen_height = (GLfloat)height;
+            //Offsets in Screen Space
+            GLfloat x_offset = ((((GLfloat)(*ft).xoffset[index]) - (GLfloat)(*ft).padding[0]) * screen_width) / (GLfloat)(*ft).scaleW;
+            GLfloat y_offset = -((((GLfloat)(*ft).yoffset[index]) - (GLfloat)(*ft).padding[1]) * screen_height) / (GLfloat)(*ft).scaleH;
+            //Width & Height in Screen Space
+            GLfloat ws = ((GLfloat)(*ft).width[index] * screen_width) / (GLfloat)(*ft).scaleW;
+            GLfloat hs = ((GLfloat)(*ft).height[index] * screen_height) / (GLfloat)(*ft).scaleH;
+            //Width & Height in Texture Space
+            GLfloat wt = (GLfloat)(*ft).width[index] / (GLfloat)(*ft).scaleW;
+            GLfloat ht = (GLfloat)(*ft).height[index] / (GLfloat)(*ft).scaleH;
+            //u & v in Texture Space
+            GLfloat u = (GLfloat)(*ft).x[index] / (GLfloat)(*ft).scaleW;
+            GLfloat v = (GLfloat)(*ft).y[index] / (GLfloat)(*ft).scaleH;
+            //XAdvance in ScreenSpace
+            GLfloat x_advance = (((*ft).xadvance[index] - 2.0f*(GLfloat)(*ft).padding[0]) * screen_width) / (*ft).scaleW;
+
+            /*
+                TO DO:
+                    * Implement kernings
+                    * Implement multiple lines and alignment
+            */
+
+            //Build VBO - (X,Y,Z U,(inverted)V) Currently only displaying entire texture once
+            (*txt).text_buffer[0] = cursor + x_offset; 
+            (*txt).text_buffer[1] = y_offset; 
+
+            (*txt).text_buffer[2] = 0.0f;     
+            
+            (*txt).text_buffer[3] = u;
+            (*txt).text_buffer[4] = v;
+
+
+            (*txt).text_buffer[5] = cursor + x_offset;
+            (*txt).text_buffer[6] = y_offset - hs;
+            (*txt).text_buffer[7] = 0.0f;    
+            
+            (*txt).text_buffer[8] = u;
+            (*txt).text_buffer[9] = v + ht;
+
+
+            (*txt).text_buffer[10] = cursor + x_offset + ws; 
+            (*txt).text_buffer[11] = y_offset; 
+            (*txt).text_buffer[12] = 0.0f;     
+            
+            (*txt).text_buffer[13] = u + wt; 
+            (*txt).text_buffer[14] = v;
+
+
+            (*txt).text_buffer[15] = cursor + x_offset + ws;
+            (*txt).text_buffer[16] = y_offset;
+            (*txt).text_buffer[17] = 0.0f;    
+            
+            (*txt).text_buffer[18] = u + wt;
+            (*txt).text_buffer[19] = v;
+
+
+            (*txt).text_buffer[20] = cursor + x_offset;
+            (*txt).text_buffer[21] = y_offset - hs;
+            (*txt).text_buffer[22] = 0.0f; 
+            
+            (*txt).text_buffer[23] = u;
+            (*txt).text_buffer[24] = v + ht;
+
+
+            (*txt).text_buffer[25] = cursor + x_offset + ws;
+            (*txt).text_buffer[26] = y_offset - hs;
+            (*txt).text_buffer[27] = 0.0f;    
+            
+            (*txt).text_buffer[28] = u + wt;
+            (*txt).text_buffer[29] = v + ht;
+
+            cursor += x_advance;
+
+
+            //Update VBO Memory
+            glBindBuffer(GL_ARRAY_BUFFER, renderResources->vbos[(*txt).vbo_index]);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, 6*5*sizeof(GLfloat), (*txt).text_buffer);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+            //Uniforms
+            glUniformMatrix4fv(glGetUniformLocation(
+                        renderResources->programs[renderState->texts[i].program_index].id, 
+                        "translation"),
+                        1, GL_FALSE, &renderState->texts[i].transformation[0][0]);
+            glUniform1i(glGetUniformLocation(
+                        renderResources->textures[renderState->texts[i].texture_index], 
+                        "texture1"), 
+                        0); 
+            glUniform3fv(glGetUniformLocation(
+                        renderResources->programs[renderState->texts[i].program_index].id, 
+                        "textColor"),
+                        1,
+                        &renderState->texts[i].f_color[0]);
+            glUniform1f(glGetUniformLocation(
+                        renderResources->programs[renderState->texts[i].program_index].id, 
+                        "cWidth"),
+                        renderState->texts[i].c_width);
+            glUniform1f(glGetUniformLocation(
+                        renderResources->programs[renderState->texts[i].program_index].id, 
+                        "cEdge"),
+                        renderState->texts[i].c_edge);
+            
+            
+
+            //Draw each character seperately
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            string++;
+        }
+
+        glDisable(GL_BLEND);
     }
 }
 
@@ -144,7 +279,7 @@ int addCamera(RenderState* renderState, int width, int height){
     renderState->cameras[renderState->num_cameras].program_index = 0;
 
     //Initial Position
-    renderState->cameras[renderState->num_cameras].pos = glm::vec3(200.0f, 200.0f, 0.0f);
+    renderState->cameras[renderState->num_cameras].pos = glm::vec3(50.0f, 50.0f, 0.0f);
 
     //Projection Matrix
     renderState->cameras[renderState->num_cameras].projection = glm::ortho<float>(0.0f, static_cast<float>(width), 0.0f,  static_cast<float>(height),  -1.0f, 1.0f);
@@ -185,12 +320,68 @@ int addObject(RenderState* renderState){
 
 int addText(RenderState* renderState){
 
-    renderState->texts[renderState->num_texts].texture_index = 1;
-    renderState->texts[renderState->num_texts].vao_index = 1;
-    renderState->texts[renderState->num_texts].program_index = 1;
+    //Check Max Texts
+    if(renderState->num_texts > MAX_TEXTS){
+        return renderState->num_texts;
+    }
+
+    renderState->texts[renderState->num_texts].texture_index = 0;
+    renderState->texts[renderState->num_texts].vao_index = 0;
+    renderState->texts[renderState->num_texts].program_index = 0;
     renderState->texts[renderState->num_texts].fontFile_index = 0;
+    renderState->texts[renderState->num_texts].text = "Text is working!";
+    renderState->texts[renderState->num_texts].f_color = glm::vec3(0.0f, 1.0f, 0.0f);
+    renderState->texts[renderState->num_texts].c_width = 0.47f;
+    renderState->texts[renderState->num_texts].c_edge = 0.2f;
+
+    //Initial Position
+    renderState->texts[renderState->num_texts].offset = glm::vec3(0.0f, 0.0f, 0.0f);
+    renderState->texts[renderState->num_texts].pos = glm::vec3(0.0f, 0.0f, 0.0f);
+    renderState->texts[renderState->num_texts].scale = glm::vec3(1.0f, 1.0f, 1.0f);
+    renderState->texts[renderState->num_texts].rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
+
+    //Transformation Matrix
+    renderState->texts[renderState->num_texts].transformation = glm::scale(renderState->texts[renderState->num_texts].transformation, renderState->texts[renderState->num_texts].scale);// Scale
+    renderState->texts[renderState->num_texts].transformation = glm::rotate(renderState->texts[renderState->num_texts].transformation, renderState->texts[renderState->num_texts].rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
+    renderState->texts[renderState->num_texts].transformation = glm::rotate(renderState->texts[renderState->num_texts].transformation, renderState->texts[renderState->num_texts].rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
+    renderState->texts[renderState->num_texts].transformation = glm::rotate(renderState->texts[renderState->num_texts].transformation, renderState->texts[renderState->num_texts].rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
+    renderState->texts[renderState->num_texts].transformation = glm::translate(renderState->texts[renderState->num_texts].transformation, renderState->texts[renderState->num_texts].pos);// Translate
 
     return renderState->num_texts++;
+}
+
+void removeCamera(RenderState* renderState, int id){
+    
+    //Boundary Check
+    if(id >= renderState->num_cameras || id < 0){
+        return;
+    }
+
+    //Delete Heap
+
+    //Shift
+    while(id != renderState->num_cameras){
+        renderState->cameras[id] = renderState->cameras[id+1];
+        id++;
+    }
+    renderState->num_cameras--;
+}
+
+void removeObject(RenderState* renderState, int id){
+    
+    //Boundary Check
+    if(id >= renderState->num_objects || id < 0){
+        return;
+    }
+
+    //Delete Heap
+
+    //Shift
+    while(id != renderState->num_objects){
+        renderState->objects[id] = renderState->objects[id+1];
+        id++;
+    }
+    renderState->num_objects--;
 }
 
 
