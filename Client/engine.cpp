@@ -13,6 +13,7 @@
 
 
     To do:
+        * Client-Side Setup
         *   - Engine Setup                                                                                  -Done       (Clean up destruction of engine)
         *   - Window Setup                                                                                  -Done
         *   - OpenGL Setup                                                                                  -Done
@@ -21,24 +22,24 @@
         *   - Program Loader                                                                                -Done       (Clean up auto uniform detection)
         *   - Texture Loader                                                                                -Done
         *   - Process Inputs                                                                                -Done
-        *   - Resource, State, input Files
-        *   - Render Cameras(Projection and view matrix uniforms)                   (1 day)                 -Done       (Scene defines when different types of cameras are used and when certain things are rendered)
-        *   - Add and Remove Objects, Cameras, etc.                                 (1 day)                 -Done       (Need to remove Texts)
-        *   - Distance Field Text                                                   (2 week)                            (Fixed max string length) (Dynamic Array Size for Text) (Delete Dynamic Text https://stackoverflow.com/questions/936687/how-do-i-declare-a-2d-array-in-c-using-new)           
-        *   - Buttons                                                               (1 day)
+        *   - Render Cameras(Projection and view matrix uniforms)                                           -Done       (Scene defines when different types of cameras are used and when certain things are rendered)
+        *   - Add and Remove Objects, Cameras, etc.                                                         -Done       (Need to remove Texts)
+        *   - Distance Field Text                                                                           -Done       (Alignment and Line Length)  
+        *   - Resource, State, input Files                                          (1 day)
+        *   - Buttons                                                               (less than 1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
         *   - Play Online - Host Server, Join By Ip, Back                           (less than 1 day)     
         *   - Settings - Video, Audio, Back                                         (less than 1 day)
         *   - Quit - Exits                                                          (less than 1 day)
-        *   - Menu Page Loader                                                      (1 day)
+        *   - Menu Page Loader                                                      (less than 1 day)
         * Client-Server Setup and test
         *   - Setup Basic Connection                                                (1 day)
         *   - Setup Ping Delay for testing                                          (1 day)
-        *   - Setup Dump Client                                                     (1 day)
-        *   - Setup Client-Side Prediction                                          (1 week)
-        *   - Setup Server Reconciliation                                           (1 week)
+        *   - Setup Dumb Client                                                     (1 day)
+        *   - Setup Client-Side Prediction                                          (2 day)
+        *   - Setup Server Reconciliation                                           (2 day)
         *   - Setup Entity Interpolation                                            (1 day)
-        *   - Setup Lag Compensation                                                (1 week)
+        *   - Setup Lag Compensation                                                (2 day)
         * Water/Fluid Dynamics
         *   - Simulation On Client-Side                                             (tbd)
         *   - Simulation Over Client-Server                                         (tbd)
