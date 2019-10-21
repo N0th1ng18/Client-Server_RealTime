@@ -96,15 +96,17 @@ void renderTexts(RenderResources* renderResources, RenderState* renderState, int
         FontFile* ft = &renderResources->fontFiles[renderState->texts[i].fontFile_index];
         char* string = renderState->texts[i].text;
         int index = -1;
-        GLfloat cursor = 0;
+        GLfloat cursor = 0.0f;
+        GLfloat kerning_offset = 0.0f;
 
         //For every character 
         while(*string != '\0'){
-
+            
             //Find Coorisponding ascii character for attributes
             for(int j=0; j < (*ft).chars_count; j++){
                 if(string[0] == (char)(*ft).ascii_id[j]){
                     index = j;
+                    break;
                 }
             }
 
@@ -123,16 +125,22 @@ void renderTexts(RenderResources* renderResources, RenderState* renderState, int
             //u & v in Texture Space
             GLfloat u = (GLfloat)(*ft).x[index] / (GLfloat)(*ft).scaleW;
             GLfloat v = (GLfloat)(*ft).y[index] / (GLfloat)(*ft).scaleH;
+            //Calculate next Kernings
+            kerning_offset = 0.0f;
+            for(int j=0; j < (*ft).kernings_count; j++){
+                if(string[1] != '\0' && string[0] == (char)(*ft).first[j] && string[1] == (char)(*ft).second[j]){
+                    kerning_offset = (GLfloat)(*ft).amount[j];
+                }
+            }
             //XAdvance in ScreenSpace
-            GLfloat x_advance = (((*ft).xadvance[index] - 2.0f*(GLfloat)(*ft).padding[0]) * screen_width) / (*ft).scaleW;
+            GLfloat x_advance = (((*ft).xadvance[index] + kerning_offset - 2.0f*(GLfloat)(*ft).padding[0]) * screen_width) / (*ft).scaleW;
 
             /*
                 TO DO:
-                    * Implement kernings
                     * Implement multiple lines and alignment
             */
 
-            //Build VBO - (X,Y,Z U,(inverted)V) Currently only displaying entire texture once
+            //Build VBO
             (*txt).text_buffer[0] = cursor + x_offset; 
             (*txt).text_buffer[1] = y_offset; 
 
@@ -279,7 +287,7 @@ int addCamera(RenderState* renderState, int width, int height){
     renderState->cameras[renderState->num_cameras].program_index = 0;
 
     //Initial Position
-    renderState->cameras[renderState->num_cameras].pos = glm::vec3(50.0f, 50.0f, 0.0f);
+    renderState->cameras[renderState->num_cameras].pos = glm::vec3(20.0f, 200.0f, 0.0f);
 
     //Projection Matrix
     renderState->cameras[renderState->num_cameras].projection = glm::ortho<float>(0.0f, static_cast<float>(width), 0.0f,  static_cast<float>(height),  -1.0f, 1.0f);
@@ -329,7 +337,7 @@ int addText(RenderState* renderState){
     renderState->texts[renderState->num_texts].vao_index = 0;
     renderState->texts[renderState->num_texts].program_index = 0;
     renderState->texts[renderState->num_texts].fontFile_index = 0;
-    renderState->texts[renderState->num_texts].text = "Text is working!";
+    renderState->texts[renderState->num_texts].text = "Nicholas Frey is awesome!";
     renderState->texts[renderState->num_texts].f_color = glm::vec3(0.0f, 1.0f, 0.0f);
     renderState->texts[renderState->num_texts].c_width = 0.47f;
     renderState->texts[renderState->num_texts].c_edge = 0.2f;
@@ -337,7 +345,7 @@ int addText(RenderState* renderState){
     //Initial Position
     renderState->texts[renderState->num_texts].offset = glm::vec3(0.0f, 0.0f, 0.0f);
     renderState->texts[renderState->num_texts].pos = glm::vec3(0.0f, 0.0f, 0.0f);
-    renderState->texts[renderState->num_texts].scale = glm::vec3(1.0f, 1.0f, 1.0f);
+    renderState->texts[renderState->num_texts].scale = glm::vec3(0.5f, 0.5f, 0.5f);
     renderState->texts[renderState->num_texts].rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
 
     //Transformation Matrix
