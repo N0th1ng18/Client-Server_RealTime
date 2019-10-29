@@ -47,24 +47,24 @@ int main(){
 int addResources(RenderResources* renderResources){
 
 	//Load Textures
-	// if(loadTexture("Textures\\Test\\water.jpg", renderResources)){
-    //     std::cout << "Failed to load Texture." << std::endl;
-    //     return 1;
-    // }
+	if(loadTexture("Textures\\Test\\water.jpg", renderResources)){
+        std::cout << "Failed to load Texture." << std::endl;
+        return 1;
+    }
 	if(loadTexture("Textures\\Fonts\\Candara.png", renderResources)){
         std::cout << "Failed to load Texture." << std::endl;
         return 1;
     }
 
 	//Load VAOs
-	//loadStaticObjectVAO(loadModel("", renderResources), renderResources);
+	loadStaticObjectVAO(loadModel("", renderResources), renderResources);
     loadDynamicTextVAO(renderResources);
 
 	//Load Shaders
-	// if(loadShader("../Shaders/basic.vert","../Shaders/basic.frag", renderResources)){
-    //     std::cout << "Failed to load Shader Program." << std::endl;
-    //     return 1;
-    // }
+	if(loadShader("../Shaders/basic.vert","../Shaders/basic.frag", renderResources)){
+        std::cout << "Failed to load Shader Program." << std::endl;
+        return 1;
+    }
     if(loadShader("../Shaders/text2d.vert","../Shaders/text2d.frag", renderResources)){
         std::cout << "Failed to load Shader Program." << std::endl;
         return 1;
@@ -97,60 +97,49 @@ int addEntities(Engine::WindowState* windowState, RenderState* renderState){
 		then input could be overrided to define how states change
 	*/
 
-/*	OUT OF SCOPE PROBLEM -> FIX IS TO USE NEW FOR ALL THESE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-
+    //Scene
     Camera* camera0 = addCamera(renderState);
-    camera0->program_index = 0;
-    camera0->pos.x = 20.0f;
-    camera0->pos.y = 200.0f;
-    camera0->pos.z = 0.0f;
+    camera0->pos = glm::vec3(0.0f, 0.0f, 0.0f);
     camera0->projection = glm::ortho<float>(0.0f, static_cast<float>(windowState->width), 0.0f,  static_cast<float>(windowState->height),  -1.0f, 1.0f);
     camera0->view = glm::translate(camera0->view, camera0->pos);
 
     //Create Objects
-	// Object* object = addObject(renderState);
-    // object->program_index = 0;
-    // object->vao_index = 0;
-    // object->texture_index = 0;
-    // object->offset = glm::vec3(0.0f, 0.0f, 0.0f);
-    // object->pos = glm::vec3(0.0f, 0.0f, 0.0f);
-    // object->scale = glm::vec3(200.0f, 200.0f, 1.0f);
-    // object->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
-    // object->transformation = glm::scale(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].scale);// Scale
-    // object->transformation = glm::rotate(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
-    // object->transformation = glm::rotate(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
-    // object->transformation = glm::rotate(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
-    // object->transformation = glm::translate(renderState->objects[renderState->num_objects].transformation, renderState->objects[renderState->num_objects].pos);// Translate
+	Object* object = addObject(renderState);
+    object->program_index = 0;
+    object->vao_index = 0;
+    object->texture_index = 0;
+    object->camera_index = 0;
+    object->offset = glm::vec3(0.0f, 0.0f, 0.0f);
+    object->pos = glm::vec3(0.0f, 0.0f, 0.0f);
+    object->scale = glm::vec3(200.0f, 200.0f, 1.0f);
+    object->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
+    object->transformation = glm::scale(object->transformation, object->scale);// Scale
+    object->transformation = glm::rotate(object->transformation, object->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
+    object->transformation = glm::rotate(object->transformation, object->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
+    object->transformation = glm::rotate(object->transformation, object->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
+    object->transformation = glm::translate(object->transformation, object->pos);// Translate
 
 
-    //Create Texts      (read from file)  
+    //Create Texts    
     Text* text = addText(renderState);
-	text->texture_index = 0;
-    text->vao_index = 0;
-	text->vbo_index = 0;
-    text->program_index = 0;
+    text->texture_index = 1;
+    text->vao_index = 1;
+    text->vbo_index = 0;
+    text->program_index = 1;
     text->fontFile_index = 0;
+    text->camera_index = 0;
     text->text = "TTText is awesome!";
-    text->f_color.x = 0.0f;
-    text->f_color.y = 1.0f;
-    text->f_color.z = 0.0f;
+    text->f_color = glm::vec3(0.0f, 1.0f, 0.0f);
     text->c_width = 0.47f;
     text->c_edge = 0.2f;
-    text->pos.x = 0.0f;
-    text->pos.y = 0.0f;
-    text->pos.z = 0.0f;
-    text->scale.x = 0.5f;
-    text->scale.y = 0.5f;
-    text->scale.z = 0.5f;
-    text->rotate.x = glm::radians(0.0f);
-    text->rotate.y = glm::radians(0.0f);
-    text->rotate.z = glm::radians(0.0f);
+    text->pos = glm::vec3(200.0f, 200.0f, 0.0f);
+    text->scale = glm::vec3(0.5f, 0.5f, 0.5f);
+    text->rotate = glm::vec3(glm::radians(0.0f),glm::radians(0.0f),glm::radians(0.0f));
     text->transformation = glm::scale(text->transformation, text->scale);// Scale
     text->transformation = glm::rotate(text->transformation, text->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
     text->transformation = glm::rotate(text->transformation, text->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
     text->transformation = glm::rotate(text->transformation, text->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
     text->transformation = glm::translate(text->transformation, text->pos);// Translate
-
 
     std::cout << "--------------Render State-----------------" << std::endl;
     std::cout << "Num_Cameras   \t=\t" << renderState->num_cameras << std::endl;

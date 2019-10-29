@@ -7,21 +7,18 @@ void bindProgram(GLuint program_index, RenderResources* renderResources, RenderS
     if(program_index != renderState->bound_program_index){
         glUseProgram(renderResources->programs[program_index].id);
         renderState->bound_program_index = program_index;
-        std::cout << "Program bound = " << renderResources->programs[program_index].id << std::endl;
     }
 }
 void bindVAO(GLuint vao_index, RenderResources* renderResources, RenderState* renderState){
     if(vao_index != renderState->bound_vao_index){
         glBindVertexArray(renderResources->vaos[vao_index].id);
         renderState->bound_vao_index = vao_index;
-        std::cout << "VAO bound = " << renderResources->vaos[vao_index].id << std::endl;
     }
 }
 void bindTexture(GLuint texture_index, RenderResources* renderResources, RenderState* renderState){
     if(texture_index != renderState->bound_texture_index){
         glBindTexture(GL_TEXTURE_2D, renderResources->textures[texture_index]);
         renderState->bound_texture_index = texture_index;
-        std::cout << "Texture bound = " << renderResources->textures[texture_index] << std::endl;
     }
 }
 
@@ -34,25 +31,30 @@ void renderCameras(RenderResources* renderResources, RenderState* renderState){
 
         Render Only Active Camera, then UI Camera
     */
+    
+    /*
+        Each Shader has an active camera
+        Each object has an active camera and uniforms are sent for that camera...
+    */
 
     //Only render Active Camera
-    for(int i=0; i < renderState->num_cameras; i++){
-        if(renderState->slotlist_cameras[i] == true){
+    // for(int i=0; i < renderState->num_cameras; i++){
+    //     if(renderState->slotlist_cameras[i] == true){
 
-            //Bind Program (Check if program is already bound)
-            bindProgram(renderState->cameras[i].program_index, renderResources, renderState);
-            //Uniforms
-            glUniformMatrix4fv(glGetUniformLocation(
-                            renderResources->programs[renderState->cameras[i].program_index].id, 
-                            "projection"),
-                            1, GL_FALSE, &renderState->cameras[i].projection[0][0]);
-            glUniformMatrix4fv(glGetUniformLocation(
-                            renderResources->programs[renderState->cameras[i].program_index].id, 
-                            "view"),
-                            1, GL_FALSE, &renderState->cameras[i].view[0][0]);
-        }
+    //         //Bind Program (Check if program is already bound)
+    //         bindProgram(renderState->cameras[i].program_index, renderResources, renderState);
+    //         //Uniforms
+    //         glUniformMatrix4fv(glGetUniformLocation(
+    //                         renderResources->programs[renderState->cameras[i].program_index].id, 
+    //                         "projection"),
+    //                         1, GL_FALSE, &renderState->cameras[i].projection[0][0]);
+    //         glUniformMatrix4fv(glGetUniformLocation(
+    //                         renderResources->programs[renderState->cameras[i].program_index].id, 
+    //                         "view"),
+    //                         1, GL_FALSE, &renderState->cameras[i].view[0][0]);
+    //     }
 
-    }
+    // }
 
 }
 
@@ -71,12 +73,21 @@ void renderObjects(RenderResources* renderResources, RenderState* renderState){
             //Uniforms
             glUniformMatrix4fv(glGetUniformLocation(
                             renderResources->programs[renderState->objects[i].program_index].id, 
+                            "projection"),
+                            1, GL_FALSE, &renderState->cameras[renderState->objects[i].camera_index].projection[0][0]);
+            glUniformMatrix4fv(glGetUniformLocation(
+                            renderResources->programs[renderState->objects[i].program_index].id, 
+                            "view"),
+                            1, GL_FALSE, &renderState->cameras[renderState->objects[i].camera_index].view[0][0]);
+            glUniformMatrix4fv(glGetUniformLocation(
+                            renderResources->programs[renderState->objects[i].program_index].id, 
                             "translation"),
                             1, GL_FALSE, &renderState->objects[i].transformation[0][0]);
             glUniform1i(glGetUniformLocation(
                             renderResources->textures[renderState->objects[i].texture_index], 
                             "texture1"), 
                             0); 
+            
 
             //Draw
             glDrawElements(GL_TRIANGLES, renderResources->vaos[renderState->objects[i].vao_index].indices_size, GL_UNSIGNED_INT, (void*)0);
@@ -203,16 +214,16 @@ void renderTexts(RenderResources* renderResources, RenderState* renderState, int
                 //Uniforms
                 glUniformMatrix4fv(glGetUniformLocation(
                             renderResources->programs[renderState->texts[i].program_index].id, 
+                            "projection"),
+                            1, GL_FALSE, &renderState->cameras[renderState->texts[i].camera_index].projection[0][0]);
+                glUniformMatrix4fv(glGetUniformLocation(
+                            renderResources->programs[renderState->texts[i].program_index].id, 
+                            "view"),
+                            1, GL_FALSE, &renderState->cameras[renderState->texts[i].camera_index].view[0][0]);
+                glUniformMatrix4fv(glGetUniformLocation(
+                            renderResources->programs[renderState->texts[i].program_index].id, 
                             "translation"),
                             1, GL_FALSE, &renderState->texts[i].transformation[0][0]);
-// for(int i=0; i < 4; i++){
-//     for(int j=0; j < 4; j++){
-//         std::cout << renderState->texts[i].transformation[i][j] << "    ";
-//     }
-//     std::cout << std::endl;
-// }
-// std::cout << "----------------------" << std::endl;
-
                 glUniform1i(glGetUniformLocation(
                             renderResources->textures[renderState->texts[i].texture_index], 
                             "texture1"), 

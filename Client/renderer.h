@@ -87,7 +87,6 @@ struct VAO{
 };
 
 struct Camera{
-    GLuint program_index;
     //Position
     glm::vec3 pos;
     glm::vec3 vel;
@@ -105,6 +104,7 @@ struct Object{
     GLuint program_index;
     GLuint vao_index;
     GLuint texture_index;
+    GLuint camera_index;
     //Position
     glm::vec3 pos;
     glm::vec3 vel;
@@ -124,7 +124,8 @@ struct Text{
     GLuint vbo_index;
     GLuint texture_index;
     int fontFile_index;
-
+    GLuint camera_index;
+    //Font Properties
     glm::vec3 f_color;
     float c_width;
     float c_edge;
@@ -181,7 +182,11 @@ struct RenderState{
             texts[i] = {};
         }
 
-        //Allocate Active Index Arrays for faster Alloc/Deletes
+        /* 
+            Allocate Active Index Arrays for faster Alloc/Deletes
+            -Alloc set object arrays with data and mark slot active
+            -Delete mark slot not active
+        */
         slotlist_cameras = new bool[max_cameras];
         slotlist_objects = new bool[max_objects];
         slotlist_texts = new bool[max_texts];

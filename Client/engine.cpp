@@ -22,10 +22,11 @@
         *   - Program Loader                                                                                -Done       (Clean up auto uniform detection)
         *   - Texture Loader                                                                                -Done
         *   - Process Inputs                                                                                -Done
-        *   - Render Cameras(Projection and view matrix uniforms)                                           -Done       (Scene defines when different types of cameras are used and when certain things are rendered)
+        *   - Cameras(Projection and view matrix uniforms)                                                  -Done       (Scene defines when different types of cameras are used and when certain things are rendered)
         *   - Add and Remove Objects, Cameras, etc.                                                         -Done       (Need to remove Texts)
         *   - Distance Field Text                                                                           -Done       (Alignment and Line Length)  
-        *   - Make Resources and State seperate from engine                         (1 day)
+        *   - Make Resources and State seperate from engine                                                 -Done     
+        *   - Scene States                                                          (1 day)
         *   - Buttons                                                               (less than 1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
         *   - Play Online - Host Server, Join By Ip, Back                           (less than 1 day)     
