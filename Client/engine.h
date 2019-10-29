@@ -52,14 +52,13 @@ void loop(WindowState* windowState, OpenGLState* openGLState, RenderResources* r
 void input(GLFWwindow* window, int key, int scancode, int action, int mods);
 void update();
 void render(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
-void destroy_Engine(WindowState* windowState, RenderResources* renderResources);
+void destroy_Engine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
 
 //initEngine Functions
 int createWindow(WindowState* windowState);
 void loadWindowState(WindowState* windowState);
 void loadInputState(WindowState* windowState, GLFWkeyfun glfwkeyfun);
 void loadOpenGLState(OpenGLState* openGLState);
-int loadRenderer(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
 
 //OpenGL Functions
 void updateViewport(WindowState* windowState);

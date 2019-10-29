@@ -18,14 +18,14 @@
         *   - Window Setup                                                                                  -Done
         *   - OpenGL Setup                                                                                  -Done
         *   - Renderer Setup                                                                                -Done
-        *   - Model Loader                                                                                  -Done       (File import from blender not supported)
+        *   - Model Loader                                                                                  -Done       (File import from 3rd party modeling program not supported)
         *   - Program Loader                                                                                -Done       (Clean up auto uniform detection)
         *   - Texture Loader                                                                                -Done
         *   - Process Inputs                                                                                -Done
         *   - Render Cameras(Projection and view matrix uniforms)                                           -Done       (Scene defines when different types of cameras are used and when certain things are rendered)
         *   - Add and Remove Objects, Cameras, etc.                                                         -Done       (Need to remove Texts)
         *   - Distance Field Text                                                                           -Done       (Alignment and Line Length)  
-        *   - Resource, State, input Files                                          (1 day)
+        *   - Make Resources and State seperate from engine                         (1 day)
         *   - Buttons                                                               (less than 1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
         *   - Play Online - Host Server, Join By Ip, Back                           (less than 1 day)     
@@ -62,7 +62,6 @@ int Engine::initEngine(WindowState* windowState, OpenGLState* openGLState, Rende
 	glewExperimental = true;
 	if (glewInit() != GLEW_OK) {std::cout << "Failed to initialize GLEW\n"; return 1;}
     loadOpenGLState(openGLState);
-    loadRenderer(windowState, renderResources, renderState);
 
     return 0;
 }
@@ -120,7 +119,7 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
             time += dt / 1000000.0;
             accumulator -= dt;
         }
-    
+
         alpha = accumulator / dt;
         Engine::render(windowState, renderResources, renderState);
         renderCounter++;
@@ -220,7 +219,10 @@ void Engine::render(WindowState* windowState, RenderResources* renderResources, 
     glfwSwapBuffers(windowState->window);
 }
 
-void Engine::destroy_Engine(WindowState* windowState, RenderResources* renderResources){
+void Engine::destroy_Engine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState){
+
+    destroyRenderState(renderState);
+    //Do RenderResources Next
 
     //Go through renderer and do clean up
     //Render State Clean Up
@@ -307,7 +309,6 @@ void Engine::loadInputState(WindowState* windowState, GLFWkeyfun glfwkeyfun){
 void Engine::loadOpenGLState(OpenGLState* openGLState){
 
     glClearColor(openGLState->clear_Color[0], openGLState->clear_Color[1],openGLState->clear_Color[2],openGLState->clear_Color[3]);
-    //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
     if(openGLState->isCulling){
         glEnable(GL_CULL_FACE);
     }else{
@@ -323,63 +324,6 @@ void Engine::loadOpenGLState(OpenGLState* openGLState){
     //glEnable(GL_BLEND);
     //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-}
-
-int Engine::loadRenderer(WindowState* windowState, RenderResources* renderResources, RenderState* renderState){
-
-    //Load Textures - Create Texture Loader
-    // if(loadTexture("Textures\\Test\\water.jpg", renderResources)){
-    //     std::cout << "Failed to load Texture." << std::endl;
-    //     return 1;
-    // }
-    if(loadTexture("Textures\\Fonts\\Candara.png", renderResources)){
-        std::cout << "Failed to load Texture." << std::endl;
-        return 1;
-    }
-
-    //Load VAOs - VAO loader from blender
-    //createStaticObject_VAO(loadModel("", renderResources), renderResources);
-    createDynamic2DText_VAO_VBO(renderResources);
-    
-    //Load Shaders          https://www.glfw.org/docs/latest/quick.html
-    // if(loadShader("../Shaders/basic.vert","../Shaders/basic.frag", renderResources)){
-    //     std::cout << "Failed to load Shader Program." << std::endl;
-    //     return 1;
-    // }
-    if(loadShader("../Shaders/text2d.vert","../Shaders/text2d.frag", renderResources)){
-        std::cout << "Failed to load Shader Program." << std::endl;
-        return 1;
-    }
-
-    //Load Font Files
-    if(loadFontFile("Textures\\Fonts\\Candara.fnt", renderResources)){
-        std::cout << "Failed to load Font." << std::endl;
-        return 1;
-    }
-
-    //Create Cameras (UI Camera, Other Cameras)
-    addCamera(renderState, windowState->width, windowState->height);
-
-    //Create Objects
-    //addObject(renderState);
-
-    //Create Fonts      (read from file)  
-    addText(renderState);
-
-    std::cout << "------------Render Resources---------------" << std::endl;
-    std::cout << "Num_Programs  \t=\t" << renderResources->num_programs << std::endl;
-    std::cout << "Num_VAOs      \t=\t" << renderResources->num_vaos << std::endl;
-    std::cout << "Num_VBOs      \t=\t" << renderResources->num_vbos << std::endl;
-    std::cout << "Num_Textures  \t=\t" << renderResources->num_textures << std::endl;
-    std::cout << "Num_FontFiles \t=\t" << renderResources->num_fontFiles << std::endl;
-    std::cout << "--------------Render State-----------------" << std::endl;
-    std::cout << "Num_Cameras   \t=\t" << renderState->num_cameras << std::endl;
-    std::cout << "Num_Objects   \t=\t" << renderState->num_objects << std::endl;
-    std::cout << "Num_Texts     \t=\t" << renderState->num_texts << std::endl;
-    std::cout << "--------------------------------------------" << std::endl;
-
-
-    return 0;
 }
 
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ INIT ENGINE FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/

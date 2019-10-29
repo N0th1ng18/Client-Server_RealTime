@@ -14,7 +14,7 @@ struct Model{
 };
 
 Model* loadModel(const char *filePath, RenderResources* renderResources);
-void createStaticObject_VAO(Model* model, RenderResources* renderResources);
-void createDynamic2DText_VAO_VBO(RenderResources* renderResources);
+void loadStaticObjectVAO(Model* model, RenderResources* renderResources);
+void loadDynamicTextVAO(RenderResources* renderResources);
 
 #endif

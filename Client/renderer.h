@@ -12,17 +12,13 @@
 #include <iterator>
 
 
-//Resources
+//Resources (do dynamically allocated like render state)
 #define MAX_TEXTURES 2
+#define MAX_MODELS 2
 #define MAX_VAOS 2
 #define MAX_VBOS 1
 #define MAX_PROGRAMS 2
 #define MAX_FONTFILES 1
-
-//Entities
-#define MAX_CAMERAS 1
-#define MAX_OBJECTS 1
-#define MAX_TEXTS 1
 
 //Structures
 struct Program{
@@ -128,6 +124,7 @@ struct Text{
     GLuint vbo_index;
     GLuint texture_index;
     int fontFile_index;
+
     glm::vec3 f_color;
     float c_width;
     float c_edge;
@@ -147,6 +144,7 @@ struct Text{
 
 struct RenderResources{
 	int num_textures = 0;
+    int num_models = 0;
 	int num_vaos = 0;
     int num_vbos = 0;
 	int num_programs = 0;
@@ -159,24 +157,74 @@ struct RenderResources{
     FontFile fontFiles[MAX_FONTFILES];
 };
 
-struct RenderState{
-    //Currently Bound
+struct RenderState{ 
+
+    RenderState(const int max_cameras, const int max_objects, const int max_texts){
+        //Save Size of Arrays
+        MAX_CAMERAS = max_cameras;
+        MAX_OBJECTS = max_objects;
+        MAX_TEXTS = max_texts;
+
+        //Allocate Entities on Heap
+        cameras = new Camera[max_cameras];
+        objects = new Object[max_objects];
+        texts = new Text[max_texts];
+
+        //Initialize
+        for(int i=0; i < max_cameras; i++){
+            cameras[i] = {};
+        }
+        for(int i=0; i < max_objects; i++){
+            objects[i] = {};
+        }
+        for(int i=0; i < max_texts; i++){
+            texts[i] = {};
+        }
+
+        //Allocate Active Index Arrays for faster Alloc/Deletes
+        slotlist_cameras = new bool[max_cameras];
+        slotlist_objects = new bool[max_objects];
+        slotlist_texts = new bool[max_texts];
+
+        //Initialize
+        for(int i=0; i < max_cameras; i++){
+            slotlist_cameras[i] = false;
+        }
+        for(int i=0; i < max_objects; i++){
+            slotlist_objects[i] = false;
+        }
+        for(int i=0; i < max_texts; i++){
+            slotlist_texts[i] = false;
+        }
+
+    }
+
+    //Active State
+    int active_state;
+
+    //Currently Bound Resources
     GLuint bound_program_index = MAX_PROGRAMS;
     GLuint bound_vao_index = MAX_VAOS;
     GLuint bound_texture_index = MAX_TEXTURES;
 
     //Cameras
-    int activeCamera;
+    int active_camera;
+    int MAX_CAMERAS;
+    bool* slotlist_cameras;
     int num_cameras = 0;
-    Camera cameras[MAX_CAMERAS];
+    Camera* cameras;
 
     //Objects
+    int MAX_OBJECTS;
+    bool* slotlist_objects;
     int num_objects = 0;
-    Object objects[MAX_OBJECTS];
+    Object* objects;
 
     //Texts
+    int MAX_TEXTS;
+    bool* slotlist_texts;
     int num_texts = 0;
-    Text texts[MAX_TEXTS];
+    Text* texts;
     
 };
 
@@ -191,20 +239,21 @@ int addFontFile(RenderResources* renderResources);
 //Delete Resources
 
 //Add Entities
-int addCamera(RenderState* renderState, int width, int height);
-int addObject(RenderState* renderState);
-int addText(RenderState* renderState);
+Camera* addCamera(RenderState* renderState);
+Object* addObject(RenderState* renderState);
+Text* addText(RenderState* renderState);
 
 //Remove Entities
 void removeCamera(RenderState* renderState, int id);
 void removeObject(RenderState* renderState, int id);
 void removeText(RenderState* renderState, int id);
 
-//Destroy Entities
-
 //Render Functions
 void renderCameras(RenderResources* renderResources, RenderState* renderState);
 void renderObjects(RenderResources* renderResources, RenderState* renderState);
 void renderTexts(RenderResources* renderResources, RenderState* renderState, int screen_width, int screen_height); //renderState, Font, Color, Pos, Size, Orientation
+
+//Clean Up
+void destroyRenderState(RenderState* renderState);
 
 #endif

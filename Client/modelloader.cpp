@@ -1,6 +1,6 @@
 #include "modelloader.h"
 
-void createStaticObject_VAO(Model* model, RenderResources* renderResources){
+void loadStaticObjectVAO(Model* model, RenderResources* renderResources){
 
     //Create VAO
     GLuint vao;
@@ -34,7 +34,7 @@ void createStaticObject_VAO(Model* model, RenderResources* renderResources){
     delete model;
 }
 
-void createDynamic2DText_VAO_VBO(RenderResources* renderResources){
+void loadDynamicTextVAO(RenderResources* renderResources){
 
     //Create VAO
     GLuint vao;
