@@ -1,0 +1,12 @@
+Cameras count=2
+Camera  prog_i=0   pos=20.0,200.0,0.0  proj=orthographic
+Camera  prog_i=1   pos=20.0,200.0,0.0  proj=orthographic
+
+Objects count=1
+Object  prog_i=0    vao_i=0 tex_i=0 offset=0.0,0.0,0.0  pos=0.0,0.0,0.0 scale=200.0,200.0,1.0   rotate=0.0,0.0,0.0
+
+DynamicTexts   count=1
+DynamicText prog_i=1    vao_i=1 tex_i=1 fontFile_i=0    text=NULL    color=0.0,1.0,0.0   width=0.47  edge=0.2   offset=0.0,0.0,0.0  pos=0.0,0.0,0.0 scale=0.5,0.5,0.5   rotate=0.0,0.0,0.0 
+
+States count=4  //Main Menu, Settings, Play, Game
+State   ?????????????????????

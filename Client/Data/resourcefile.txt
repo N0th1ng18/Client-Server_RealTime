@@ -1,0 +1,20 @@
+Textures    count=2
+Texture path=Textures\\Test\\water.jpg
+Texture path=Textures\\Fonts\\Candara.png
+
+Models  count=2
+Model   path=Models\\Objects\\square.obj
+Model   path=Models\\Objects\\empty.obj
+
+VAOs    count=2
+VAO type=static_object  vbos=2
+VAO type=dynamic_text   vbos=1
+
+Programs count=2
+Program vertpath=../Shaders/basic.vert  fragpath=../Shaders/basic.frag
+Program vertpath=../Shaders/text2d.vert  fragpath=../Shaders/text2d.frag
+
+FontFiles   count=1
+FontFile    path=Textures\\Fonts\\Candara.fnt 
+
+??????????? HARD CODE FOR NOW ????????????
