@@ -1,14 +1,11 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#define WIN32_LEAN_AND_MEAN
+
 //includes
-#include <iostream>         //For console
 #include "Windows.h"
-#include <GL/glew.h>        //Determining which OpenGL extensions are supported on device
-#include <GLFW/glfw3.h>     //Handle for the window
-#include <glm/glm.hpp>      //Mathmatics
-
-
+#include <iostream>         //For console
 #include "engine.h"
 
 //methods

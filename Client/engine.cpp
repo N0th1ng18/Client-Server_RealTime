@@ -379,10 +379,10 @@ int Engine::udpInit(NetworkState* networkState){
 
     return 0;
 }
-int Engine::udpConnect(char* address, NetworkState* networkState){
+int Engine::udpConnect(PCWSTR address, NetworkState* networkState){
     //Server Address
     networkState->server_address.sin_family = AF_INET;
-    InetPton(AF_INET, (PCWSTR)&address[0], &networkState->server_address.sin_addr.S_un.S_addr);   //TEXT("192.***.**.**")
+    InetPtonW(AF_INET, address, &networkState->server_address.sin_addr.S_un.S_addr);   //TEXT("192.***.**.**")
     networkState->server_address.sin_port = htons(networkState->server_port);
 
     //Send and Receive from server.
@@ -407,6 +407,7 @@ int Engine::udpSend(char* buffer, int buffer_len, NetworkState* networkState){
         std::cout << "Error: failed to send message " << WSAGetLastError() << std::endl;
         return 1;
     }
+    std::cout << WSAGetLastError() << std::endl;
     return 0;
 }
 int Engine::udpReceive(NetworkState* networkState){

@@ -1,11 +1,13 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
+#define WIN32_LEAN_AND_MEAN
+
 //includes
-#include "Windows.h"
-#include <iostream>         //For console
 #include <winsock2.h>       //Socket Programing
 #include <Ws2tcpip.h>
+#include "Windows.h"
+#include <iostream>         //For console
 #include <GL/glew.h>        //Determining which OpenGL extensions are supported on device
 #include <GLFW/glfw3.h>     //Handle for the window
 #include <glm/glm.hpp>
@@ -75,7 +77,7 @@ void updateViewport(WindowState* windowState);
 
 //Network Functions
 int udpInit(NetworkState* networkState);
-int udpConnect(char* address, NetworkState* networkState);
+int udpConnect(PCWSTR address, NetworkState* networkState);
 int udpSend(char* buffer, int buffer_size, NetworkState* networkState);
 int udpReceive(NetworkState* networkState);
 int udpDisconnect(NetworkState* networkState);

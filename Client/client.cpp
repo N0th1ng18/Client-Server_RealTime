@@ -29,11 +29,13 @@ int main(){
 	openGLState.clear_Color[2] = 1.0f;
 
     //Network
-    int buffer_len = 2;
+    PCWSTR address = L"192.168.1.3";
+    networkState.server_port = 8081;
+    int buffer_len = 1;
     char buffer[1024];
     buffer[0] = 'A';
     if(Engine::udpInit(&networkState)){return 1;}
-    if(Engine::udpConnect("192.168.1.2", &networkState)){return 1;}
+    if(Engine::udpConnect(address, &networkState)){return 1;}
     if(Engine::udpSend(&buffer[0], buffer_len, &networkState)){return 1;}
     if(Engine::udpDisconnect(&networkState)){return 1;}
     if(Engine::udpCleanup(&networkState)){return 1;}
