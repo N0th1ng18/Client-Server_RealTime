@@ -4,9 +4,9 @@
     1. https://developer.valvesoftware.com/wiki/Latency_Compensating_Methods_in_Client/Server_In-game_Protocol_Design_and_Optimization
 */
 
-int addResources(RenderResources* renderResources);
-int addEntities(Engine::WindowState* windowState, RenderState* renderState);
-int addStates();
+int loadResources(RenderResources* renderResources);
+int addEntities(Engine::WindowState* windowState, RenderState* renderState);    //convert to loadStates()
+int connect();
 
 int main(){
 
@@ -18,6 +18,7 @@ int main(){
 	//Structures
 	Engine::WindowState windowState = {};
 	Engine::OpenGLState openGLState = {};
+    Engine::NetworkState networkState = {};
 	RenderResources renderResources = {}; 
 	RenderState renderState = RenderState(MAX_CAMERAS,MAX_OBJECTS,MAX_TEXTS);
 	
@@ -25,15 +26,26 @@ int main(){
 	windowState.isFullscreen = false;
 	openGLState.isCulling = true;
 	openGLState.isWireframe = false;
-	openGLState.clear_Color[0] = 1.0f;
+	openGLState.clear_Color[2] = 1.0f;
+
+    //Network
+    int buffer_len = 2;
+    char buffer[1024];
+    buffer[0] = 'A';
+    if(Engine::udpInit(&networkState)){return 1;}
+    if(Engine::udpConnect("192.168.1.2", &networkState)){return 1;}
+    if(Engine::udpSend(&buffer[0], buffer_len, &networkState)){return 1;}
+    if(Engine::udpDisconnect(&networkState)){return 1;}
+    if(Engine::udpCleanup(&networkState)){return 1;}
+
 
 	//Engine
 	if(Engine::initEngine(&windowState, &openGLState, &renderResources, &renderState)){return 1;};
 
 	//Load
-	if(addResources(&renderResources)){return 1;}
-	if(addEntities(&windowState, &renderState)){return 1;}
-	if(addStates()){return 1;}
+	if(loadResources(&renderResources)){return 1;}
+    //loadStates()                                            //!!!!!!!!!!!!!!would set inital state to 0 index (Best way would be to have unloaded and loaded Entities for each scene with active and not-active loaded objects) Input could be overrided or time to define how states change!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	if(addEntities(&windowState, &renderState)){return 1;}    //Convert this to loadStates() ^^^^^^^^
 
 	//Engine Loop
 	Engine::loop(&windowState, &openGLState, &renderResources, &renderState);
@@ -43,8 +55,7 @@ int main(){
     return 0;
 }
 
-
-int addResources(RenderResources* renderResources){
+int loadResources(RenderResources* renderResources){
 
 	//Load Textures
 	if(loadTexture("Textures\\Test\\water.jpg", renderResources)){
@@ -88,15 +99,6 @@ int addResources(RenderResources* renderResources){
 }
 int addEntities(Engine::WindowState* windowState, RenderState* renderState){
 
-	//Create Cameras (UI Camera, Other Cameras)
-	/*
-		Change RenderResources arrays and RenderState's arrays to dynamic aka pointers...!!!!!!!!!!!!!!!!!!
-		Then adding entities will be much easier, but will have to manage deletion to avoid memory leaks.
-
-		Should beable to define states and load the first state for main menu. 
-		then input could be overrided to define how states change
-	*/
-
     //Scene
     Camera* camera0 = addCamera(renderState);
     camera0->pos = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -110,8 +112,8 @@ int addEntities(Engine::WindowState* windowState, RenderState* renderState){
     object->texture_index = 0;
     object->camera_index = 0;
     object->offset = glm::vec3(0.0f, 0.0f, 0.0f);
-    object->pos = glm::vec3(0.0f, 0.0f, 0.0f);
-    object->scale = glm::vec3(200.0f, 200.0f, 1.0f);
+    object->pos = glm::vec3(0.5f, 0.5f, 0.0f);
+    object->scale = glm::vec3(800.0f, 800.0f, 1.0f);
     object->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
     object->transformation = glm::scale(object->transformation, object->scale);// Scale
     object->transformation = glm::rotate(object->transformation, object->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
@@ -128,8 +130,8 @@ int addEntities(Engine::WindowState* windowState, RenderState* renderState){
     text->program_index = 1;
     text->fontFile_index = 0;
     text->camera_index = 0;
-    text->text = "TTText is awesome!";
-    text->f_color = glm::vec3(0.0f, 1.0f, 0.0f);
+    text->text = "Text is awesome!";
+    text->f_color = glm::vec3(0.0f, 0.0f, 0.0f);
     text->c_width = 0.47f;
     text->c_edge = 0.2f;
     text->pos = glm::vec3(200.0f, 200.0f, 0.0f);
@@ -146,11 +148,6 @@ int addEntities(Engine::WindowState* windowState, RenderState* renderState){
     std::cout << "Num_Objects   \t=\t" << renderState->num_objects << std::endl;
     std::cout << "Num_Texts     \t=\t" << renderState->num_texts << std::endl;
     std::cout << "-------------------------------------------" << std::endl;
-
-	return 0;
-}
-
-int addStates(){
 
 	return 0;
 }

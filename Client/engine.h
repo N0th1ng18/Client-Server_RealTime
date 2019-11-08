@@ -4,6 +4,8 @@
 //includes
 #include "Windows.h"
 #include <iostream>         //For console
+#include <winsock2.h>       //Socket Programing
+#include <Ws2tcpip.h>
 #include <GL/glew.h>        //Determining which OpenGL extensions are supported on device
 #include <GLFW/glfw3.h>     //Handle for the window
 #include <glm/glm.hpp>
@@ -46,6 +48,14 @@ struct OpenGLState{
 	bool isWireframe = false;
 };
 
+struct NetworkState{
+	//Server
+	bool isConnected = false;
+	SOCKET server_socket;
+	sockaddr_in server_address;
+	unsigned short server_port;
+};
+
 //Main Functions
 int initEngine(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState);
 void loop(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState);
@@ -62,6 +72,15 @@ void loadOpenGLState(OpenGLState* openGLState);
 
 //OpenGL Functions
 void updateViewport(WindowState* windowState);
+
+//Network Functions
+int udpInit(NetworkState* networkState);
+int udpConnect(char* address, NetworkState* networkState);
+int udpSend(char* buffer, int buffer_size, NetworkState* networkState);
+int udpReceive(NetworkState* networkState);
+int udpDisconnect(NetworkState* networkState);
+int udpCleanup(NetworkState* networkState);
+
 
 
 }

@@ -22,42 +22,6 @@ void bindTexture(GLuint texture_index, RenderResources* renderResources, RenderS
     }
 }
 
-//Render Cameras
-void renderCameras(RenderResources* renderResources, RenderState* renderState){
-
-    /*
-        Cameras[0]      = UI Camera
-        Cameras[1 -> n] = Other Cameras
-
-        Render Only Active Camera, then UI Camera
-    */
-    
-    /*
-        Each Shader has an active camera
-        Each object has an active camera and uniforms are sent for that camera...
-    */
-
-    //Only render Active Camera
-    // for(int i=0; i < renderState->num_cameras; i++){
-    //     if(renderState->slotlist_cameras[i] == true){
-
-    //         //Bind Program (Check if program is already bound)
-    //         bindProgram(renderState->cameras[i].program_index, renderResources, renderState);
-    //         //Uniforms
-    //         glUniformMatrix4fv(glGetUniformLocation(
-    //                         renderResources->programs[renderState->cameras[i].program_index].id, 
-    //                         "projection"),
-    //                         1, GL_FALSE, &renderState->cameras[i].projection[0][0]);
-    //         glUniformMatrix4fv(glGetUniformLocation(
-    //                         renderResources->programs[renderState->cameras[i].program_index].id, 
-    //                         "view"),
-    //                         1, GL_FALSE, &renderState->cameras[i].view[0][0]);
-    //     }
-
-    // }
-
-}
-
 //Render
 void renderObjects(RenderResources* renderResources, RenderState* renderState){
 

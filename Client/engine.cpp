@@ -26,7 +26,7 @@
         *   - Add and Remove Objects, Cameras, etc.                                                         -Done       (Need to remove Texts)
         *   - Distance Field Text                                                                           -Done       (Alignment and Line Length)  
         *   - Make Resources and State seperate from engine                                                 -Done     
-        *   - Scene States                                                          (1 day)
+        *   - Scene States                                                          (1 day)                 -Next to start  
         *   - Buttons                                                               (less than 1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
         *   - Play Online - Host Server, Join By Ip, Back                           (less than 1 day)     
@@ -34,7 +34,7 @@
         *   - Quit - Exits                                                          (less than 1 day)
         *   - Menu Page Loader                                                      (less than 1 day)
         * Client-Server Setup and test
-        *   - Setup Basic Connection                                                (1 day)
+        *   - Setup Basic Connection                                                                        -Almost Done (integrate connection into engine)                    
         *   - Setup Ping Delay for testing                                          (1 day)
         *   - Setup Dumb Client                                                     (1 day)
         *   - Setup Client-Side Prediction                                          (2 day)
@@ -212,7 +212,6 @@ void Engine::render(WindowState* windowState, RenderResources* renderResources, 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //render state needs to have a main_menu, settings, join_server, ect. (Maps) -> can be loaded from file.
-    renderCameras(renderResources, renderState);
     renderObjects(renderResources, renderState);
     renderTexts(renderResources, renderState, windowState->width, windowState->height);
 
@@ -360,8 +359,76 @@ void Engine::updateViewport(WindowState* windowState){
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ OPENGL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 
+/**************************************** NETWORK FUNCTIONS *************************************************/
+int Engine::udpInit(NetworkState* networkState){
+    //Init WINSOCK
+    WSAData wsaData;
+    WORD dllVersion = MAKEWORD(2, 1);
+    if( WSAStartup(dllVersion, &wsaData) != NO_ERROR){
+        std::cout << "Error: failed to init WINSOCK" << std::endl;
+        return 1;
+    }
 
+    //Socket
+    std::cout << "Server: Opening Socket..." << std::endl;
+    networkState->server_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    if(networkState->server_socket == INVALID_SOCKET){
+        std::cout << "Error: failed to create socket" << WSAGetLastError() << std::endl;
+        return 1;
+    }
 
+    return 0;
+}
+int Engine::udpConnect(char* address, NetworkState* networkState){
+    //Server Address
+    networkState->server_address.sin_family = AF_INET;
+    InetPton(AF_INET, (PCWSTR)&address[0], &networkState->server_address.sin_addr.S_un.S_addr);   //TEXT("192.***.**.**")
+    networkState->server_address.sin_port = htons(networkState->server_port);
+
+    //Send and Receive from server.
+    /*
+        //Send connection request
+        //Receive connection request
+        if(error){
+            isConnected = false
+            return 1;
+        }
+        isConnected = true
+    */
+    networkState->isConnected = false;
+
+    return 0;
+}
+int Engine::udpSend(char* buffer, int buffer_len, NetworkState* networkState){
+
+    //Send
+    std::cout << "Server: Sending DataGram..." << std::endl;
+    if(sendto(networkState->server_socket, buffer, buffer_len, 0, (struct sockaddr*) &networkState->server_address, sizeof(networkState->server_address)) == SOCKET_ERROR){
+        std::cout << "Error: failed to send message " << WSAGetLastError() << std::endl;
+        return 1;
+    }
+    return 0;
+}
+int Engine::udpReceive(NetworkState* networkState){
+
+    return 0;
+}
+int Engine::udpDisconnect(NetworkState* networkState){
+    networkState->isConnected = false;
+    return 0;
+}
+int Engine::udpCleanup(NetworkState* networkState){
+    //Close Socket
+    std::cout << "Server: Closing Socket..." << std::endl;
+    if(closesocket(networkState->server_socket) == SOCKET_ERROR){
+        std::cout << "Error: failed to close socket " << WSAGetLastError() << std::endl;
+        return 1;
+    }
+
+    WSACleanup();
+    return 0;
+}
+/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NETWORK FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 
 

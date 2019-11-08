@@ -254,7 +254,6 @@ void removeObject(RenderState* renderState, int id);
 void removeText(RenderState* renderState, int id);
 
 //Render Functions
-void renderCameras(RenderResources* renderResources, RenderState* renderState);
 void renderObjects(RenderResources* renderResources, RenderState* renderState);
 void renderTexts(RenderResources* renderResources, RenderState* renderState, int screen_width, int screen_height); //renderState, Font, Color, Pos, Size, Orientation
 
