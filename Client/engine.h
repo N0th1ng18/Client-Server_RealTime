@@ -18,9 +18,11 @@
 #include "shaderloader.h"
 #include "fontloader.h"
 
+#define MAX_SEND_BUF_SIZE 1024
+#define MAX_RECV_BUF_SIZE 1024
+
 namespace Engine
 {
-
 //Structures
 struct WindowState{
 	int pos[2] = {0, 0};
@@ -51,20 +53,34 @@ struct OpenGLState{
 };
 
 struct NetworkState{
-	//Server
+	//Client
 	bool isConnected = false;
+	//Server
+	PCWSTR address;
+	unsigned short server_port;
 	SOCKET server_socket;
 	sockaddr_in server_address;
-	unsigned short server_port;
+	int server_address_len = sizeof(server_address);
+	sockaddr_in client_address;
+	int client_address_len = sizeof(client_address);
+
+	//Client Address array
+	
+	//Messages
+	int start_index_ptr;					//stores the next open space to write msg && The total size of msg written
+	char send_buffer[MAX_SEND_BUF_SIZE];
+	int recv_msg_len;
+	char recv_buffer[MAX_RECV_BUF_SIZE];
+	
 };
 
-//Main Functions
+//Client Functions
 int initEngine(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState);
-void loop(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState);
+void loop(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState, NetworkState* networkState);
 void input(GLFWwindow* window, int key, int scancode, int action, int mods);
-void update();
+void update(double time, RenderState* renderState, NetworkState* networkState);
 void render(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
-void destroy_Engine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
+void destroyEngine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
 
 //initEngine Functions
 int createWindow(WindowState* windowState);
@@ -77,13 +93,12 @@ void updateViewport(WindowState* windowState);
 
 //Network Functions
 int udpInit(NetworkState* networkState);
-int udpConnect(PCWSTR address, NetworkState* networkState);
-int udpSend(char* buffer, int buffer_size, NetworkState* networkState);
-int udpReceive(NetworkState* networkState);
+int udpConnect(NetworkState* networkState);
+int udpSend_client(NetworkState* networkState);
+int udpReceive_client(NetworkState* networkState);
 int udpDisconnect(NetworkState* networkState);
 int udpCleanup(NetworkState* networkState);
-
-
+void package_msg(char* msg, int size, int start_index, NetworkState* networkState);
 
 }
 

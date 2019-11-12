@@ -20,6 +20,13 @@
 #define MAX_PROGRAMS 2
 #define MAX_FONTFILES 1
 
+enum ClientStates{
+    CONNECT_TO_SERVER = 0,
+    CONNECTING = 1,
+    FAILED_TO_CONNECT = 2,
+    GAME = 3
+};
+
 //Structures
 struct Program{
     GLuint id; 
@@ -184,8 +191,8 @@ struct RenderState{
 
         /* 
             Allocate Active Index Arrays for faster Alloc/Deletes
-            -Alloc set object arrays with data and mark slot active
-            -Delete mark slot not active
+            - Alloc - set object arrays with data and mark slot active
+            - Delete - mark slot not active
         */
         slotlist_cameras = new bool[max_cameras];
         slotlist_objects = new bool[max_objects];
@@ -205,7 +212,7 @@ struct RenderState{
     }
 
     //Active State
-    int active_state;
+    enum ClientStates clientState;
 
     //Currently Bound Resources
     GLuint bound_program_index = MAX_PROGRAMS;

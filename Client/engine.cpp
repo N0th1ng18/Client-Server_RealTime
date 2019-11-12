@@ -26,7 +26,7 @@
         *   - Add and Remove Objects, Cameras, etc.                                                         -Done       (Need to remove Texts)
         *   - Distance Field Text                                                                           -Done       (Alignment and Line Length)  
         *   - Make Resources and State seperate from engine                                                 -Done     
-        *   - Scene States                                                          (1 day)                 -Next to start  
+        *   - Scene States                                                          (1 day)                  
         *   - Buttons                                                               (less than 1 day)
         *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
         *   - Play Online - Host Server, Join By Ip, Back                           (less than 1 day)     
@@ -34,7 +34,7 @@
         *   - Quit - Exits                                                          (less than 1 day)
         *   - Menu Page Loader                                                      (less than 1 day)
         * Client-Server Setup and test
-        *   - Setup Basic Connection                                                                        -Almost Done (integrate connection into engine)                    
+        *   - Setup Basic Connection                                                                        -Done       (Questions to Answer: Create a timer,threads, How to message ping time)              
         *   - Setup Ping Delay for testing                                          (1 day)
         *   - Setup Dumb Client                                                     (1 day)
         *   - Setup Client-Side Prediction                                          (2 day)
@@ -51,7 +51,7 @@
 
 */
 
-/***************************************** MAIN FUNCTIONS *******************************************/
+/***************************************** CLIENT FUNCTIONS *******************************************/
 
 int Engine::initEngine(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState){
 
@@ -67,17 +67,7 @@ int Engine::initEngine(WindowState* windowState, OpenGLState* openGLState, Rende
     return 0;
 }
 
-void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState){
-    //Connect to server (Render Different Scenes menu, connection screen, loading screen, game)
-
-    // Sample clock to find start time
-    // Sample user input (mouse, keyboard, joystick)
-    // Package up and send movement command using simulation time
-    // Read any packets from the server from the network system
-    // Use packets to determine visible objects and their state
-    // Render Scene
-    // Sample clock to find end time
-    // End time minus start time is the simulation time for the next frame
+void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState, NetworkState* networkState){
 
     double time = 0.0;
     double dt = 1000000.0 / openGLState->updatesPerSecond;
@@ -114,7 +104,7 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
         accumulator += (double)(frameTime.QuadPart);
 
         while(accumulator >= dt){
-            Engine::update();
+            Engine::update(time, renderState, networkState);
             updateCounter++;
 
             time += dt / 1000000.0;
@@ -143,7 +133,7 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
 void Engine::input(GLFWwindow* window, int key, int scancode, int action, int mods){
 
     //Get window Data from window
-    void * data = glfwGetWindowUserPointer(window);
+    void* data = glfwGetWindowUserPointer(window);
     WindowState* windowState = static_cast<WindowState*>(data);
 
     switch(key){
@@ -202,7 +192,85 @@ void Engine::input(GLFWwindow* window, int key, int scancode, int action, int mo
 
 }
 
-void Engine::update(){
+void Engine::update(double time, RenderState* renderState, NetworkState* networkState){
+
+    switch(renderState->clientState){
+        case CONNECT_TO_SERVER:
+        {
+            //Initialize
+            if(Engine::udpInit(networkState)){
+                renderState->clientState = FAILED_TO_CONNECT; 
+                break;
+            }
+            //Connect
+            if(Engine::udpConnect(networkState)){
+                renderState->clientState = FAILED_TO_CONNECT; 
+                break;
+            }
+            //Send Connect Message
+            char* msg = "Client Saying: Connect Me!";
+            int msg_len = 26;
+            package_msg(msg, msg_len, 0, networkState);
+            if(udpSend_client(networkState)){
+                renderState->clientState = FAILED_TO_CONNECT; 
+                break;
+            }
+
+            //Set State to Connecting
+            renderState->clientState =  CONNECTING;
+            break; 
+        }
+        case CONNECTING:
+        {
+            //BLOCKING
+            if(udpReceive_client(networkState)){
+                renderState->clientState = FAILED_TO_CONNECT;
+                break;
+            }else{
+                //Print results -> Check if connected and -> Game or Failed_to_Connect
+                std::cout << "Client Received: " << networkState->recv_msg_len << std::endl;
+                for(int i=0; i < networkState->recv_msg_len; i++){
+                    std::cout << networkState->recv_buffer[i];
+                }
+                std::cout << std::endl;
+            }
+            
+
+            //NON-BLOCKING
+            //Resend Timer
+            //Timeout Timer
+            //Read Packet
+                //Connected
+                    //Set Connected to True
+                    //Set State to Game
+                //Not Connected && Not TimedOut
+                    //Send Connection packet
+
+            break;
+        }
+        case FAILED_TO_CONNECT:
+        {
+
+            break;
+        }
+        case GAME:
+        {
+            
+            break;
+        }
+            
+    }
+
+
+
+    //Connect to server (Render Different Scenes menu, connection screen, loading screen, game)
+        // Sample user input (mouse, keyboard, joystick)
+    // Package up and send movement command using simulation time
+    // Read any packets from the server from the network system
+    // Use packets to determine visible objects and their state
+        // Render Scene
+        // Sample clock to find end time
+        // End time minus start time is the simulation time for the next frame
 
 }
 
@@ -219,7 +287,7 @@ void Engine::render(WindowState* windowState, RenderResources* renderResources, 
     glfwSwapBuffers(windowState->window);
 }
 
-void Engine::destroy_Engine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState){
+void Engine::destroyEngine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState){
 
     destroyRenderState(renderState);
     //Do RenderResources Next
@@ -235,14 +303,17 @@ void Engine::destroy_Engine(WindowState* windowState, RenderResources* renderRes
     glfwTerminate();
 }
 
-/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MAIN FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ CLIENT FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 
 
 
 
+/***************************************** SERVER FUNCTIONS *******************************************/
 
 
+
+/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SERVER FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 
 
@@ -370,7 +441,7 @@ int Engine::udpInit(NetworkState* networkState){
     }
 
     //Socket
-    std::cout << "Server: Opening Socket..." << std::endl;
+    std::cout << "Network: Opening Socket..." << std::endl;
     networkState->server_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if(networkState->server_socket == INVALID_SOCKET){
         std::cout << "Error: failed to create socket" << WSAGetLastError() << std::endl;
@@ -379,55 +450,64 @@ int Engine::udpInit(NetworkState* networkState){
 
     return 0;
 }
-int Engine::udpConnect(PCWSTR address, NetworkState* networkState){
+int Engine::udpConnect(NetworkState* networkState){
     //Server Address
     networkState->server_address.sin_family = AF_INET;
-    InetPtonW(AF_INET, address, &networkState->server_address.sin_addr.S_un.S_addr);   //TEXT("192.***.**.**")
+    InetPtonW(AF_INET, networkState->address, &networkState->server_address.sin_addr.S_un.S_addr);
     networkState->server_address.sin_port = htons(networkState->server_port);
-
-    //Send and Receive from server.
-    /*
-        //Send connection request
-        //Receive connection request
-        if(error){
-            isConnected = false
-            return 1;
-        }
-        isConnected = true
-    */
+    networkState->server_address_len = sizeof(networkState->server_address);
     networkState->isConnected = false;
 
     return 0;
 }
-int Engine::udpSend(char* buffer, int buffer_len, NetworkState* networkState){
+int Engine::udpSend_client(NetworkState* networkState){
 
     //Send
-    std::cout << "Server: Sending DataGram..." << std::endl;
-    if(sendto(networkState->server_socket, buffer, buffer_len, 0, (struct sockaddr*) &networkState->server_address, sizeof(networkState->server_address)) == SOCKET_ERROR){
+    std::cout << "Network: Sending DataGram..." << std::endl;
+    if(sendto(networkState->server_socket, networkState->send_buffer, networkState->start_index_ptr, 0, (struct sockaddr*) &networkState->server_address, sizeof(networkState->server_address)) == SOCKET_ERROR){
         std::cout << "Error: failed to send message " << WSAGetLastError() << std::endl;
         return 1;
     }
-    std::cout << WSAGetLastError() << std::endl;
     return 0;
 }
-int Engine::udpReceive(NetworkState* networkState){
-
+int Engine::udpReceive_client(NetworkState* networkState){
+    std::cout << "Network: Receiving DataGram..." << std::endl;
+    networkState->recv_msg_len = recvfrom(networkState->server_socket, networkState->recv_buffer, MAX_RECV_BUF_SIZE, 0, (struct sockaddr*) &networkState->server_address, &networkState->server_address_len);
+    if(networkState->recv_msg_len == SOCKET_ERROR){
+        std::cout << "Error: failed to receive message " << WSAGetLastError() << std::endl;
+        return 1;
+    }
     return 0;
 }
 int Engine::udpDisconnect(NetworkState* networkState){
-    networkState->isConnected = false;
-    return 0;
-}
-int Engine::udpCleanup(NetworkState* networkState){
-    //Close Socket
-    std::cout << "Server: Closing Socket..." << std::endl;
+        //Close Socket
+    std::cout << "Network: Closing Socket..." << std::endl;
     if(closesocket(networkState->server_socket) == SOCKET_ERROR){
         std::cout << "Error: failed to close socket " << WSAGetLastError() << std::endl;
         return 1;
     }
-
+    networkState->isConnected = false;
+    return 0;
+}
+int Engine::udpCleanup(NetworkState* networkState){
     WSACleanup();
     return 0;
+}
+
+void Engine::package_msg(char* msg, int size, int start_index, NetworkState* networkState){
+    //Check if start_index is outside the bounds of the send buffer
+    if(start_index < 0 || start_index + size - 1 >= MAX_SEND_BUF_SIZE - 1){
+        std::cout << "ERROR: OutOfBounceException" << std::endl;
+        return;
+    }
+
+    //Write message to send_buffer
+    for(int i=start_index; i < start_index + size - 1; i++){
+        networkState->send_buffer[i + start_index] = msg[i];
+    }
+
+    //Save start_index for future packages
+    networkState->start_index_ptr = start_index + size;
 }
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NETWORK FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 

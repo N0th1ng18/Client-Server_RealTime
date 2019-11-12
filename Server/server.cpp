@@ -15,76 +15,45 @@ int main(){
     // End time minus start time is the simulation time for the next frame
 
 
-
+    /*
+        To Do:
+        1) Think about how to structure windowState, openGLState, NetworkState, RenderResources, and RenderState
+    */
 
     std::cout << "--------------Server--------------" << std::endl;
 
-    unsigned short port = 8081;
+    //Structures
+    Engine_Server::NetworkState networkState = {};
 
-    int result;
+    //Setup
 
-    SOCKET server_socket;
-    struct sockaddr_in server_address;
-    struct sockaddr_in client_address;
-    int client_address_len = sizeof(client_address);
 
-    char receive_buffer[1024];
-    int receive_buffer_len = 1024;
+    //Network
+    networkState.server_port = 8081;
 
-    //Init WINSOCK
-    WSAData wsaData;
-    WORD dllVersion = MAKEWORD(2, 1);
-    result = WSAStartup(dllVersion, &wsaData);
-    if( result != NO_ERROR){
-        std::cout << "Error: failed to init WINSOCK" << std::endl;
-        return 1;
+
+    //Should be called in update function in main loop
+    if(Engine_Server::udpInit(&networkState)){return 1;}
+    if(Engine_Server::udpServerBind(&networkState)){return 1;}
+    if(Engine_Server::udpReceive_server(&networkState)){return 1;}else{
+        
+        //Receive Needs to save connection info
+
+        //Print Results
+        std::cout << "Server: Result: " << networkState.recv_msg_len << std::endl;
+        for(int i=0; i < networkState.recv_msg_len; i++){
+            std::cout << networkState.recv_buffer[i];
+        }
+        std::cout << std::endl;
+
+        //Package Msg
+        char* msg = "Server Saying: Ok!";
+        int msg_len = 18;
+        package_msg(msg, msg_len, 0, &networkState);
     }
-
-    //Socket
-    std::cout << "Server: Opening Socket..." << std::endl;
-    server_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    if(server_socket == INVALID_SOCKET){
-        std::cout << "Error: failed to create socket" << WSAGetLastError() << std::endl;
-        return 1;
-    }
-
-    //Bind
-    server_address.sin_family = AF_INET;
-    server_address.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
-    server_address.sin_port = htons(port);
-
-    std::cout << "Server: Binding..." << std::endl;
-    result = bind(server_socket, (struct sockaddr*) &server_address, sizeof(server_address));
-    if( result != 0){
-        std::cout << "Error: failed to bind socket " << WSAGetLastError() << std::endl;
-        return 1;
-    }
-
-    //Send/Recv
-    std::cout << "Server: Receiving DataGram..." << std::endl;
-    result = recvfrom(server_socket, receive_buffer, receive_buffer_len, 0, (struct sockaddr*) &client_address, &client_address_len);
-    if(result == SOCKET_ERROR){
-        std::cout << "Error: failed to receive message " << WSAGetLastError() << std::endl;
-        return 1;
-    }
-
-    //Print Results
-    std::cout << "Server: Result: " << result << std::endl;
-    for(int i=0; i < result; i++){
-        std::cout << receive_buffer[i] << std::endl;
-    }
-
-    //Close Socket
-    std::cout << "Server: Closing Socket..." << std::endl;
-    result = closesocket(server_socket);
-    if(result == SOCKET_ERROR){
-        std::cout << "Error: failed to close socket " << WSAGetLastError() << std::endl;
-        return 1;
-    }
-
-    //Terminate
-    WSACleanup();
-    std::cout << "Server: Terminated" << std::endl;
+    if(Engine_Server::udpSend_server(&networkState, &networkState.client_address)){return 1;}
+    if(Engine_Server::udpDisconnect(&networkState)){return 1;}
+    if(Engine_Server::udpCleanup(&networkState)){return 1;}
 
     return 0;
 }

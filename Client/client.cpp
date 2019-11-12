@@ -27,19 +27,11 @@ int main(){
 	openGLState.isCulling = true;
 	openGLState.isWireframe = false;
 	openGLState.clear_Color[2] = 1.0f;
+    renderState.clientState = CONNECT_TO_SERVER;       //Initial State
 
     //Network
-    PCWSTR address = L"192.168.1.3";
+    networkState.address = L"192.168.1.3";
     networkState.server_port = 8081;
-    int buffer_len = 1;
-    char buffer[1024];
-    buffer[0] = 'A';
-    if(Engine::udpInit(&networkState)){return 1;}
-    if(Engine::udpConnect(address, &networkState)){return 1;}
-    if(Engine::udpSend(&buffer[0], buffer_len, &networkState)){return 1;}
-    if(Engine::udpDisconnect(&networkState)){return 1;}
-    if(Engine::udpCleanup(&networkState)){return 1;}
-
 
 	//Engine
 	if(Engine::initEngine(&windowState, &openGLState, &renderResources, &renderState)){return 1;};
@@ -50,9 +42,9 @@ int main(){
 	if(addEntities(&windowState, &renderState)){return 1;}    //Convert this to loadStates() ^^^^^^^^
 
 	//Engine Loop
-	Engine::loop(&windowState, &openGLState, &renderResources, &renderState);
+	Engine::loop(&windowState, &openGLState, &renderResources, &renderState, &networkState);
 	//Engine CleanUp
-	Engine::destroy_Engine(&windowState, &renderResources, &renderState);
+	Engine::destroyEngine(&windowState, &renderResources, &renderState);
 
     return 0;
 }
