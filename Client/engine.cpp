@@ -265,17 +265,15 @@ void Engine::update(double time, RenderState* renderState, NetworkState* network
                         }
                         case CONNECTION_DECLINED:
                         {
-
+                            renderState->clientState = FAILED_TO_CONNECT;
                             break;
                         }
                         case FAILED_PROTOCOL:
                         {
-
+                            //Drop Packet
                             break;
                         }
                     }
-                        //Switch to connected
-
                 }
                 
 
@@ -324,6 +322,11 @@ void Engine::update(double time, RenderState* renderState, NetworkState* network
         case CONNECTED:
         {
             //time-out if server hasnt sent update packet after x seconds
+
+            //send input packets to server
+            //Receive state updates from server
+            //  -> update render state
+
             std::cout << "CONNECTED" << std::endl;
             break;
         }

@@ -86,20 +86,56 @@ int Engine_Server::update(NetworkState* networkState, double time){
                 {
                     case CONNECTION_REQUEST:
                     {
-                        //Check if server is full
-                        //  -YES -> send Connection_declined
-                        //Check if client is already connected 
-                        //  -YES -> resend connected
-                        //Check if slot is available
-                        //  -NO -> Connection Declined
-                        //  -YES -> add client to slot and send Connection_Accepted
+                        //Check for open slot
+                        int avail_slot = Engine_Server::getAvailSlot(networkState);
+                        if(avail_slot < 0){
+                            //Server is full -> send CONNECTION_DECLINED
+                            char* msg = "Titan3";
+                            int msg_len = 7;
+                            Engine_Server::package_msg(msg, msg_len, 0, networkState);
+                            if(Engine_Server::udpSend_server(networkState, &networkState->client_address)){
+                                std::cout << "Error: Failed to send Server Full message." << std::endl;
+                                break;
+                            }
 
-                        std::cout << "CONNECTION_REQUEST" << std::endl;
+                        }
+
+                        //Add client to slot
+                        networkState->slot_address[avail_slot].sin_addr.S_un.S_addr = networkState->client_address.sin_addr.S_un.S_addr;
+                        networkState->slot_address[avail_slot].sin_port = networkState->client_address.sin_port;
+                        networkState->is_occupied[avail_slot] = true;
+                        //Slot is available -> send CONNECTION_ACCEPTED
+                        char* msg = "Titan2";
+                        int msg_len = 7;
+                        Engine_Server::package_msg(msg, msg_len, 0, networkState);
+                        if(Engine_Server::udpSend_server(networkState, &networkState->client_address)){
+                            std::cout << "Error: Failed to send Connection Accepted message." << std::endl;
+                            break;
+                        }
+
+                        std::cout << "----------Slots----------" << std::endl;
+                        for(int i=0; i < MAX_CLIENTS; i++){
+                            std::cout << i << "\t";
+                            if(networkState->is_occupied[i]){
+                                std::cout << "\t" << networkState->slot_address[i].sin_addr.S_un.S_addr << ":" << networkState->slot_address[i].sin_port;
+                            }
+                            std::cout << std::endl;
+                        }
+                        std::cout << "----------Slots----------" << std::endl << std::endl;
+
+                        //std::cout << "CONNECTION_REQUEST" << std::endl;
+                        break;
+                    }
+                    case GAME_PACKET:
+                    {
+                        //Incoming input packets -> Update Server State
+                        
                         break;
                     }
                     case FAILED_PROTOCOL:
                     {
-                        std::cout << "FAILED_PROTOCOL" << std::endl;
+                        //Drop packet
+                        //std::cout << "FAILED_PROTOCOL" << std::endl;
                         break;
                     }
                 }
@@ -109,19 +145,15 @@ int Engine_Server::update(NetworkState* networkState, double time){
 
     }while(networkState->recv_msg_len >= 0 /* && receiveMessageTimeout*/);
 
-    //Package Msg
-    // char* msg = "Server Saying: Ok!";
-    // int msg_len = 18;
-    // package_msg(msg, msg_len, 0, networkState);
-
-    // if(Engine_Server::udpSend_server(networkState, &networkState->client_address)){return 1;}
 
     //While(messages exist to be read)
         //Read messages from socket
         //Process messages
         //update state
 
-    //send game state to each client
+    //Step Physics!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    //Send game state to each client x times per second or every X ms
 
     return 0;
 }
@@ -303,5 +335,22 @@ int Engine_Server::checkProtocol(char* buffer, int buffer_len){
 
     //return message type
     return buffer[PROTOCOL_ID_LEN] - 48;
+}
+
+/*
+    Returns next open slot or -1 if no slots are available.
+*/
+int Engine_Server::getAvailSlot(NetworkState* networkState){
+
+    int avail_id = -1;
+    for(int i=0; i < MAX_CLIENTS; i++){
+        if(!networkState->is_occupied[i]){
+            avail_id = i;
+            return avail_id;
+        }
+    }
+
+    return avail_id;
+
 }
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ PROTOCOL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/

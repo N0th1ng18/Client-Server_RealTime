@@ -27,6 +27,7 @@ const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 #define FAILED_PROTOCOL -1
 #define CONNECTION_REQUEST 1
 #define CONNECTION_ACCEPTED 2
+#define GAME_PACKET 4
 
 
 
@@ -51,8 +52,8 @@ struct NetworkState{
 	sockaddr_in server_address;
 	int server_address_len = sizeof(server_address);
 	//Client Connection Slots
-	int slot_id[MAX_CLIENTS];
-	sockaddr_in slot_address[MAX_CLIENTS];
+	bool is_occupied[MAX_CLIENTS] = {false};
+	sockaddr_in slot_address[MAX_CLIENTS] = {NULL};
 	//Network
 	sockaddr_in client_address;
 	int client_address_len = sizeof(client_address);
@@ -90,6 +91,7 @@ void package_msg(char* msg, int size, int start_index, NetworkState* networkStat
 
 //Protocol Functions
 int checkProtocol(char* buffer, int buffer_len);
+int getAvailSlot(NetworkState* networkState);
 
 }
 

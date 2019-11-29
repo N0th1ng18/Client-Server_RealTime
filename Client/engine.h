@@ -31,6 +31,7 @@ const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 #define CONNECTION_REQUEST 1
 #define CONNECTION_ACCEPTED 2
 #define CONNECTION_DECLINED 3
+#define GAME_PACKET 4
 
 
 namespace Engine
