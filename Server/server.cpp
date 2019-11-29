@@ -17,41 +17,30 @@ int main(){
 
     /*
         To Do:
-        1) Think about how to structure windowState, openGLState, NetworkState, RenderResources, and RenderState
+        1) Go into engine loop and wait for connections. then start game...etc.
     */
 
     std::cout << "--------------Server--------------" << std::endl;
 
     //Structures
+    Engine_Server::ServerLoopState serverLoopState = {};
     Engine_Server::NetworkState networkState = {};
 
     //Setup
-
+    serverLoopState.updatesPerSecond = 1.0;
 
     //Network
     networkState.server_port = 8081;
 
 
-    //Should be called in update function in main loop
+    //Server
     if(Engine_Server::udpInit(&networkState)){return 1;}
     if(Engine_Server::udpServerBind(&networkState)){return 1;}
-    if(Engine_Server::udpReceive_server(&networkState)){return 1;}else{
-        
-        //Receive Needs to save connection info
 
-        //Print Results
-        std::cout << "Server: Result: " << networkState.recv_msg_len << std::endl;
-        for(int i=0; i < networkState.recv_msg_len; i++){
-            std::cout << networkState.recv_buffer[i];
-        }
-        std::cout << std::endl;
+    //Run Server
+    Engine_Server::server_Loop(&networkState, &serverLoopState);
 
-        //Package Msg
-        char* msg = "Server Saying: Ok!";
-        int msg_len = 18;
-        package_msg(msg, msg_len, 0, &networkState);
-    }
-    if(Engine_Server::udpSend_server(&networkState, &networkState.client_address)){return 1;}
+    //Terminate Server
     if(Engine_Server::udpDisconnect(&networkState)){return 1;}
     if(Engine_Server::udpCleanup(&networkState)){return 1;}
 

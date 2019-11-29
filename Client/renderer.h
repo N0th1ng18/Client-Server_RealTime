@@ -24,7 +24,7 @@ enum ClientStates{
     CONNECT_TO_SERVER = 0,
     CONNECTING = 1,
     FAILED_TO_CONNECT = 2,
-    GAME = 3
+    CONNECTED = 3
 };
 
 //Structures

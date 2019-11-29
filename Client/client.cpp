@@ -6,7 +6,6 @@
 
 int loadResources(RenderResources* renderResources);
 int addEntities(Engine::WindowState* windowState, RenderState* renderState);    //convert to loadStates()
-int connect();
 
 int main(){
 
@@ -30,7 +29,7 @@ int main(){
     renderState.clientState = CONNECT_TO_SERVER;       //Initial State
 
     //Network
-    networkState.address = L"192.168.1.3";
+    networkState.address = L"192.168.1.151";    //Using Ipconfig
     networkState.server_port = 8081;
 
 	//Engine

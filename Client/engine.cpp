@@ -32,7 +32,7 @@
         *   - Play Online - Host Server, Join By Ip, Back                           (less than 1 day)     
         *   - Settings - Video, Audio, Back                                         (less than 1 day)
         *   - Quit - Exits                                                          (less than 1 day)
-        *   - Menu Page Loader                                                      (less than 1 day)
+        *   - Menu Page Loader                                                      (less than 1 day)                   Setup String appender for creating messages
         * Client-Server Setup and test
         *   - Setup Basic Connection                                                                        -Done       (Questions to Answer: Create a timer,threads, How to message ping time)              
         *   - Setup Ping Delay for testing                                          (1 day)
@@ -71,7 +71,7 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
 
     double time = 0.0;
     double dt = 1000000.0 / openGLState->updatesPerSecond;
-
+    
     double accumulator = 0.0;
 	double alpha = 0.0;
     
@@ -208,32 +208,99 @@ void Engine::update(double time, RenderState* renderState, NetworkState* network
                 break;
             }
             //Send Connect Message
-            char* msg = "Client Saying: Connect Me!";
-            int msg_len = 26;
-            package_msg(msg, msg_len, 0, networkState);
-            if(udpSend_client(networkState)){
+            char* msg = "Titan1";
+            int msg_len = 7;
+            
+            //Package up message
+            Engine::package_msg(msg, msg_len, 0, networkState);
+
+            //Set Connect Timer
+            networkState->connect_timer = time;
+
+            //Send Inital message to implicitly bind the socket (sendto)
+            std::cout << "Client: Connection Request" << std::endl;
+            if(Engine::udpSend_client(networkState)){
                 renderState->clientState = FAILED_TO_CONNECT; 
                 break;
             }
 
             //Set State to Connecting
-            renderState->clientState =  CONNECTING;
+            renderState->clientState = CONNECTING;
             break; 
         }
         case CONNECTING:
         {
-            //BLOCKING
-            if(udpReceive_client(networkState)){
+
+            //Check connection timout
+            if(time - networkState->connect_timer > CONNECT_TIMOUT){
+                renderState->clientState = FAILED_TO_CONNECT;
+                break;
+            }
+
+            //Resend Connection Request
+            if(time - networkState->connect_timer > CONNECT_RESEND_TIME){
+                networkState->connect_timer = time;
+
+                std::cout << "Client: Connection Request" << std::endl;
+                if(Engine::udpSend_client(networkState)){
+                    renderState->clientState = FAILED_TO_CONNECT; 
+                    break;
+                }
+            }
+
+            if(Engine::udpReceive_client(networkState)){
                 renderState->clientState = FAILED_TO_CONNECT;
                 break;
             }else{
-                //Print results -> Check if connected and -> Game or Failed_to_Connect
-                std::cout << "Client Received: " << networkState->recv_msg_len << std::endl;
-                for(int i=0; i < networkState->recv_msg_len; i++){
-                    std::cout << networkState->recv_buffer[i];
+
+                //Check if message length is greater than 0
+                if(networkState->recv_msg_len > 0){
+
+                    switch(checkProtocol(networkState->recv_buffer, networkState->recv_msg_len))
+                    {
+                        case CONNECTION_ACCEPTED:
+                        {
+                            renderState->clientState = CONNECTED;
+                            break;
+                        }
+                        case CONNECTION_DECLINED:
+                        {
+
+                            break;
+                        }
+                        case FAILED_PROTOCOL:
+                        {
+
+                            break;
+                        }
+                    }
+                        //Switch to connected
+
                 }
-                std::cout << std::endl;
+                
+
+                //Print results -> Check if connected and -> Game or Failed_to_Connect
+                // std::cout << "Client Received: " << networkState->recv_msg_len << std::endl;
+                // for(int i=0; i < networkState->recv_msg_len; i++){
+                //     std::cout << networkState->recv_buffer[i];
+                // }
+                // std::cout << std::endl;
             }
+            //Send Packet once every second
+            //Check if it has a message
+            //if so did we connect. 
+            //Yes -> Connected
+            //No message -> do nothing
+            //Failed to connect -> Failed to connect
+
+            //Send Packet once every second and check response!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // if(udpSend_client(networkState)){
+            //     renderState->clientState = FAILED_TO_CONNECT; 
+            //     break;
+            // }
+
+            // //BLOCKING (MAKE THIS NOT BLOCKING found at engine_server.cpp line 130.)
+
             
 
             //NON-BLOCKING
@@ -250,12 +317,14 @@ void Engine::update(double time, RenderState* renderState, NetworkState* network
         }
         case FAILED_TO_CONNECT:
         {
-
+            std::cout << "FAILED_TO_CONNECT" << std::endl;
+            
             break;
         }
-        case GAME:
+        case CONNECTED:
         {
-            
+            //time-out if server hasnt sent update packet after x seconds
+            std::cout << "CONNECTED" << std::endl;
             break;
         }
             
@@ -432,21 +501,27 @@ void Engine::updateViewport(WindowState* windowState){
 
 /**************************************** NETWORK FUNCTIONS *************************************************/
 int Engine::udpInit(NetworkState* networkState){
+
     //Init WINSOCK
     WSAData wsaData;
     WORD dllVersion = MAKEWORD(2, 1);
-    if( WSAStartup(dllVersion, &wsaData) != NO_ERROR){
+    networkState->result = WSAStartup(dllVersion, &wsaData);
+    if(networkState->result != NO_ERROR){
         std::cout << "Error: failed to init WINSOCK" << std::endl;
         return 1;
     }
 
     //Socket
-    std::cout << "Network: Opening Socket..." << std::endl;
     networkState->server_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if(networkState->server_socket == INVALID_SOCKET){
-        std::cout << "Error: failed to create socket" << WSAGetLastError() << std::endl;
+        networkState->error = WSAGetLastError();
+        std::cout << "Error " << networkState->error <<": failed to create socket." << std::endl;
         return 1;
     }
+
+    //Set Socket to Non Blocking
+    unsigned long int noblock = 1;
+    ioctlsocket(networkState->server_socket, FIONBIO, &noblock);
 
     return 0;
 }
@@ -455,35 +530,41 @@ int Engine::udpConnect(NetworkState* networkState){
     networkState->server_address.sin_family = AF_INET;
     InetPtonW(AF_INET, networkState->address, &networkState->server_address.sin_addr.S_un.S_addr);
     networkState->server_address.sin_port = htons(networkState->server_port);
-    networkState->server_address_len = sizeof(networkState->server_address);
     networkState->isConnected = false;
 
     return 0;
 }
 int Engine::udpSend_client(NetworkState* networkState){
-
-    //Send
-    std::cout << "Network: Sending DataGram..." << std::endl;
-    if(sendto(networkState->server_socket, networkState->send_buffer, networkState->start_index_ptr, 0, (struct sockaddr*) &networkState->server_address, sizeof(networkState->server_address)) == SOCKET_ERROR){
-        std::cout << "Error: failed to send message " << WSAGetLastError() << std::endl;
+    networkState->result = sendto(networkState->server_socket, networkState->send_buffer, networkState->start_index_ptr, 0, (struct sockaddr*) &networkState->server_address, sizeof(networkState->server_address));
+    if(networkState->result == SOCKET_ERROR){
+        networkState->error = WSAGetLastError();
+        std::cout << "Error " << networkState->error << ": failed to send message." << std::endl;
         return 1;
     }
     return 0;
 }
 int Engine::udpReceive_client(NetworkState* networkState){
-    std::cout << "Network: Receiving DataGram..." << std::endl;
+
+    networkState->server_address_len = sizeof(networkState->server_address);
+
     networkState->recv_msg_len = recvfrom(networkState->server_socket, networkState->recv_buffer, MAX_RECV_BUF_SIZE, 0, (struct sockaddr*) &networkState->server_address, &networkState->server_address_len);
     if(networkState->recv_msg_len == SOCKET_ERROR){
-        std::cout << "Error: failed to receive message " << WSAGetLastError() << std::endl;
-        return 1;
+        networkState->error = WSAGetLastError();
+        if(networkState->error = WSAEWOULDBLOCK){
+            //Empty Socket -> continue without blocking
+        }else{
+            std::cout << "Error " << networkState->error << ": failed to receive message." << std::endl;
+            return 1;
+        }
     }
     return 0;
 }
 int Engine::udpDisconnect(NetworkState* networkState){
-        //Close Socket
-    std::cout << "Network: Closing Socket..." << std::endl;
-    if(closesocket(networkState->server_socket) == SOCKET_ERROR){
-        std::cout << "Error: failed to close socket " << WSAGetLastError() << std::endl;
+
+    networkState->result = closesocket(networkState->server_socket);
+    if(networkState->result == SOCKET_ERROR){
+        networkState->error = WSAGetLastError();
+        std::cout << "Error " << networkState->error << ": failed to close socket." << std::endl;
         return 1;
     }
     networkState->isConnected = false;
@@ -512,6 +593,27 @@ void Engine::package_msg(char* msg, int size, int start_index, NetworkState* net
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NETWORK FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 
+/**************************************** PROTOCOL FUNCTIONS **********************************************/
+int Engine::checkProtocol(char* buffer, int buffer_len){
+
+    //Check buffer length and discard packets that are too small
+    if(buffer_len < MINIMUM_PACKET_SIZE){
+        //std::cout << "Packet Too Small" << std::endl;
+        return -1;
+    }
+
+    //Check if protocol ID is equal
+    for(int i=0; i < PROTOCOL_ID_LEN; i++){
+        if(buffer[i] != PROTOCOL_ID[i]){
+            //std::cout << "buffer != Protocol_id" << i << std::endl;
+            return -1;
+        }
+    }
+
+    //return message type
+    return buffer[PROTOCOL_ID_LEN] - 48;
+}
+/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ PROTOCOL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 
 

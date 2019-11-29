@@ -21,6 +21,18 @@
 #define MAX_SEND_BUF_SIZE 1024
 #define MAX_RECV_BUF_SIZE 1024
 
+//Protocol
+const double CONNECT_RESEND_TIME = 3.0;	//Seconds
+const double CONNECT_TIMOUT = 10.0;	//Seconds
+const int PROTOCOL_ID_LEN = 5;
+const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+#define MINIMUM_PACKET_SIZE 6	//Protocol_ID(5) + MessageType(1)
+#define FAILED_PROTOCOL -1
+#define CONNECTION_REQUEST 1
+#define CONNECTION_ACCEPTED 2
+#define CONNECTION_DECLINED 3
+
+
 namespace Engine
 {
 //Structures
@@ -53,8 +65,12 @@ struct OpenGLState{
 };
 
 struct NetworkState{
+	//Setup
+	int result, error;
+
 	//Client
 	bool isConnected = false;
+	double connect_timer;
 	//Server
 	PCWSTR address;
 	unsigned short server_port;
@@ -99,6 +115,9 @@ int udpReceive_client(NetworkState* networkState);
 int udpDisconnect(NetworkState* networkState);
 int udpCleanup(NetworkState* networkState);
 void package_msg(char* msg, int size, int start_index, NetworkState* networkState);
+
+//Protocol Functions
+int checkProtocol(char* buffer, int buffer_len);
 
 }
 
