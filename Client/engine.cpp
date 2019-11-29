@@ -208,11 +208,9 @@ void Engine::update(double time, RenderState* renderState, NetworkState* network
                 break;
             }
             //Send Connect Message
-            char* msg = "Titan1";
-            int msg_len = 7;
-            
-            //Package up message
-            Engine::package_msg(msg, msg_len, 0, networkState);
+            networkState->start_index_ptr = 0;
+            Engine::package_msg((char *)PROTOCOL_ID, 5, networkState);
+            Engine::package_msg((char *)MSG_CONNECTION_REQUEST, 1, networkState);
 
             //Set Connect Timer
             networkState->connect_timer = time;
@@ -578,20 +576,20 @@ int Engine::udpCleanup(NetworkState* networkState){
     return 0;
 }
 
-void Engine::package_msg(char* msg, int size, int start_index, NetworkState* networkState){
+void Engine::package_msg(char* msg, int size,NetworkState* networkState){
     //Check if start_index is outside the bounds of the send buffer
-    if(start_index < 0 || start_index + size - 1 >= MAX_SEND_BUF_SIZE - 1){
+    if(networkState->start_index_ptr < 0 || networkState->start_index_ptr + size > MAX_SEND_BUF_SIZE){
         std::cout << "ERROR: OutOfBounceException" << std::endl;
         return;
     }
 
     //Write message to send_buffer
-    for(int i=start_index; i < start_index + size - 1; i++){
-        networkState->send_buffer[i + start_index] = msg[i];
+    for(int i=networkState->start_index_ptr, j = 0; i < networkState->start_index_ptr + size; i++, j++){
+        networkState->send_buffer[networkState->start_index_ptr + j] = msg[j];
     }
 
     //Save start_index for future packages
-    networkState->start_index_ptr = start_index + size;
+    networkState->start_index_ptr += size;
 }
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NETWORK FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 

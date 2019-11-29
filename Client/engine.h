@@ -26,6 +26,7 @@ const double CONNECT_RESEND_TIME = 3.0;	//Seconds
 const double CONNECT_TIMOUT = 10.0;	//Seconds
 const int PROTOCOL_ID_LEN = 5;
 const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+const char MSG_CONNECTION_REQUEST[1] = {'1'};
 #define MINIMUM_PACKET_SIZE 6	//Protocol_ID(5) + MessageType(1)
 #define FAILED_PROTOCOL -1
 #define CONNECTION_REQUEST 1
@@ -36,6 +37,7 @@ const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 
 namespace Engine
 {
+
 //Structures
 struct WindowState{
 	int pos[2] = {0, 0};
@@ -115,7 +117,7 @@ int udpSend_client(NetworkState* networkState);
 int udpReceive_client(NetworkState* networkState);
 int udpDisconnect(NetworkState* networkState);
 int udpCleanup(NetworkState* networkState);
-void package_msg(char* msg, int size, int start_index, NetworkState* networkState);
+void package_msg(char* msg, int size, NetworkState* networkState);
 
 //Protocol Functions
 int checkProtocol(char* buffer, int buffer_len);

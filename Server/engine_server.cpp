@@ -90,9 +90,9 @@ int Engine_Server::update(NetworkState* networkState, double time){
                         int avail_slot = Engine_Server::getAvailSlot(networkState);
                         if(avail_slot < 0){
                             //Server is full -> send CONNECTION_DECLINED
-                            char* msg = "Titan3";
-                            int msg_len = 7;
-                            Engine_Server::package_msg(msg, msg_len, 0, networkState);
+                            networkState->start_index_ptr = 0;
+                            Engine_Server::package_msg((char *)PROTOCOL_ID, 5, networkState);
+                            Engine_Server::package_msg((char *)MSG_CONNECTION_DECLINED, 1, networkState);
                             if(Engine_Server::udpSend_server(networkState, &networkState->client_address)){
                                 std::cout << "Error: Failed to send Server Full message." << std::endl;
                                 break;
@@ -105,15 +105,16 @@ int Engine_Server::update(NetworkState* networkState, double time){
                         networkState->slot_address[avail_slot].sin_port = networkState->client_address.sin_port;
                         networkState->is_occupied[avail_slot] = true;
                         //Slot is available -> send CONNECTION_ACCEPTED
-                        char* msg = "Titan2";
-                        int msg_len = 7;
-                        Engine_Server::package_msg(msg, msg_len, 0, networkState);
+                        networkState->start_index_ptr = 0;
+                        Engine_Server::package_msg((char *)PROTOCOL_ID, 5, networkState);
+                        Engine_Server::package_msg((char *)MSG_CONNECTION_ACCEPTED, 1, networkState);
+
                         if(Engine_Server::udpSend_server(networkState, &networkState->client_address)){
                             std::cout << "Error: Failed to send Connection Accepted message." << std::endl;
                             break;
                         }
 
-                        std::cout << "----------Slots----------" << std::endl;
+                        std::cout << "---------------Slots---------------" << std::endl;
                         for(int i=0; i < MAX_CLIENTS; i++){
                             std::cout << i << "\t";
                             if(networkState->is_occupied[i]){
@@ -121,7 +122,7 @@ int Engine_Server::update(NetworkState* networkState, double time){
                             }
                             std::cout << std::endl;
                         }
-                        std::cout << "----------Slots----------" << std::endl << std::endl;
+                        std::cout << "---------------Slots---------------" << std::endl << std::endl;
 
                         //std::cout << "CONNECTION_REQUEST" << std::endl;
                         break;
@@ -218,8 +219,6 @@ int Engine_Server::udpSend_server(NetworkState* networkState, sockaddr_in* addre
         return 1;
     }
 
-    std::cout << address->sin_addr.S_un.S_addr << ":" << address->sin_port << std::endl;
-
     //Send
     std::cout << "Network: Sending DataGram..." << std::endl;
     networkState->result = sendto(networkState->server_socket, networkState->send_buffer, networkState->start_index_ptr, 0, (struct sockaddr*) address, sizeof(*address));
@@ -270,20 +269,20 @@ int Engine_Server::udpCleanup(NetworkState* networkState){
     return 0;
 }
 
-void Engine_Server::package_msg(char* msg, int size, int start_index, NetworkState* networkState){
+void Engine_Server::package_msg(char* msg, int size,NetworkState* networkState){
     //Check if start_index is outside the bounds of the send buffer
-    if(start_index < 0 || start_index + size - 1 >= MAX_SEND_BUF_SIZE - 1){
+    if(networkState->start_index_ptr < 0 || networkState->start_index_ptr + size > MAX_SEND_BUF_SIZE){
         std::cout << "ERROR: OutOfBounceException" << std::endl;
         return;
     }
 
     //Write message to send_buffer
-    for(int i=start_index; i < start_index + size - 1; i++){
-        networkState->send_buffer[i + start_index] = msg[i];
+    for(int i=networkState->start_index_ptr, j = 0; i < networkState->start_index_ptr + size; i++, j++){
+        networkState->send_buffer[networkState->start_index_ptr + j] = msg[j];
     }
 
     //Save start_index for future packages
-    networkState->start_index_ptr = start_index + size;
+    networkState->start_index_ptr += size;
 }
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NETWORK FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
@@ -344,9 +343,16 @@ int Engine_Server::getAvailSlot(NetworkState* networkState){
 
     int avail_id = -1;
     for(int i=0; i < MAX_CLIENTS; i++){
+        //Check if slot is being used
         if(!networkState->is_occupied[i]){
             avail_id = i;
             return avail_id;
+        //Check if address and port are equal
+        }else if(networkState->slot_address[i].sin_addr.S_un.S_addr == networkState->client_address.sin_addr.S_un.S_addr 
+                    && networkState->slot_address[i].sin_port == networkState->client_address.sin_port){
+            avail_id = i;
+            return avail_id;
+            
         }
     }
 

@@ -23,6 +23,8 @@
 //Protocol
 const int PROTOCOL_ID_LEN = 5;
 const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+const char MSG_CONNECTION_ACCEPTED[1] = {'2'};
+const char MSG_CONNECTION_DECLINED[1] = {'3'};
 #define MINIMUM_PACKET_SIZE 6	//Protocol_ID(5) + MessageType(1)
 #define FAILED_PROTOCOL -1
 #define CONNECTION_REQUEST 1
@@ -31,8 +33,11 @@ const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 
 
 
+
+
 namespace Engine_Server
 {
+
 //Structures
 
 struct ServerLoopState{
@@ -87,7 +92,7 @@ int udpSend_server(NetworkState* networkState, sockaddr_in* address);
 int udpReceive_server(NetworkState* networkState);
 int udpDisconnect(NetworkState* networkState);
 int udpCleanup(NetworkState* networkState);
-void package_msg(char* msg, int size, int start_index, NetworkState* networkState);
+void package_msg(char* msg, int size, NetworkState* networkState);
 
 //Protocol Functions
 int checkProtocol(char* buffer, int buffer_len);
