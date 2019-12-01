@@ -21,7 +21,7 @@
 #define MAX_CLIENTS 5
 
 //Protocol
-const double SERVER_OUTPUT_DELAY = 1.0 / 20.0;	//20 times a second
+const double MASTERSTATE_RESEND_TIME = 1.0 / 20.0;	//20 times a second
 const int PROTOCOL_ID_LEN = 5;
 const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 #define MINIMUM_PACKET_SIZE 6	//Protocol_ID(5) + MessageType(1)
@@ -49,16 +49,16 @@ struct Connect_Response_P{
 	char MSG_TYPE;
 };
 struct Client_MS_P{
-	int client_id;
 	float pos_x;
 	float pos_y;
-	float pox_z;
+	float pos_z;
 };
 struct MasterState_P{
 	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 	char MSG_TYPE = '5';
+	int client_id;
 	int num_clients;
-	Client_MS_P* client_p;
+	Client_MS_P client_p[MAX_CLIENTS];
 };
 //Receive
 struct Receive_P{
@@ -88,12 +88,13 @@ struct NetworkState{
 
 	//Packets
 	Connect_Response_P connect_response_P;
+	MasterState_P masterstate_p;
 	Receive_P receive_p;
 
 	//Client Connection Slots
 	bool is_occupied[MAX_CLIENTS] = {false};
 	sockaddr_in slot_address[MAX_CLIENTS] = {NULL};
-	double send_timer;
+	double send_timer = 0.0;
 
 	//Network
 	sockaddr_in client_address;

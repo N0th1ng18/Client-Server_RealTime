@@ -28,7 +28,7 @@ int main(){
     Engine_Server::MasterGameState masterGameState = {};
 
     //Setup
-    serverLoopState.updatesPerSecond = 1.0;
+    serverLoopState.updatesPerSecond = 60.0;
 
     //Network
     networkState.server_port = 8081;

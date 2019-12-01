@@ -217,10 +217,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
 
             //Send Inital message to implicitly bind the socket (sendto)
             std::cout << "Client: Connection Request" << std::endl;
-            if(Engine::udpSend_client(networkState, (char*)&networkState->connect_p, sizeof(Connect_P))){
-                renderState->clientState = FAILED_TO_CONNECT; 
-                break;
-            }
+            Engine::udpSend_client(networkState, (char*)&networkState->connect_p, sizeof(Connect_P));
 
             //Set State to Connecting
             renderState->clientState = CONNECTING;
@@ -240,36 +237,28 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                 networkState->connect_timer = time;
 
                 std::cout << "Client: Connection Request" << std::endl;
-                if(Engine::udpSend_client(networkState, (char*)&networkState->connect_p, sizeof(Connect_P))){
-                    renderState->clientState = FAILED_TO_CONNECT; 
-                    break;
-                }
+                Engine::udpSend_client(networkState, (char*)&networkState->connect_p, sizeof(Connect_P));
             }
 
-            if(Engine::udpReceive_client(networkState, (char*)&networkState->receive_p, sizeof(Receive_P))){
-                renderState->clientState = FAILED_TO_CONNECT;
-                break;
-            }else{
-
-                //Check if message length is greater than 0
-                if(networkState->recv_msg_len > 0){
-                    switch(checkProtocol(networkState, networkState->recv_msg_len))
+            Engine::udpReceive_client(networkState, (char*)&networkState->receive_p, sizeof(Receive_P));
+            //Check if message length is greater than 0
+            if(networkState->recv_msg_len > 0){
+                switch(checkProtocol(networkState, networkState->recv_msg_len))
+                {
+                    case CONNECTION_ACCEPTED:
                     {
-                        case CONNECTION_ACCEPTED:
-                        {
-                            renderState->clientState = CONNECTED;
-                            break;
-                        }
-                        case CONNECTION_DECLINED:
-                        {
-                            renderState->clientState = FAILED_TO_CONNECT;
-                            break;
-                        }
-                        case FAILED_PROTOCOL:
-                        {
-                            //Drop Packet
-                            break;
-                        }
+                        renderState->clientState = CONNECTED;
+                        break;
+                    }
+                    case CONNECTION_DECLINED:
+                    {
+                        renderState->clientState = FAILED_TO_CONNECT;
+                        break;
+                    }
+                    case FAILED_PROTOCOL:
+                    {
+                        //Drop Packet
+                        break;
                     }
                 }
             }
@@ -284,12 +273,26 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
         {
             //Send Input Packet to server
             getButtonsBitset(windowState, networkState);
-            if(Engine::udpSend_client(networkState, (char*)&networkState->input_p, sizeof(Input_P))){
-                std::cout << "Failed to send input packet" << std::endl;
-                break;
-            }
+            Engine::udpSend_client(networkState, (char*)&networkState->input_p, sizeof(Input_P));
 
             //Read packets from server and update render state
+            Engine::udpReceive_client(networkState, (char*)&networkState->receive_p, sizeof(Receive_P));
+            //Check if message length is greater than 0
+            if(networkState->recv_msg_len > 0){
+                switch(checkProtocol(networkState, networkState->recv_msg_len))
+                {
+                    case GAME_PACKET:
+                    {
+                        //Update RenderState
+                        std::cout << "ID: " << networkState->receive_p.client_id 
+                                  << " | pos: (" << networkState->receive_p.client_p[networkState->receive_p.client_id].pos_x 
+                                  << ", " << networkState->receive_p.client_p[networkState->receive_p.client_id].pos_y 
+                                  << ", " << networkState->receive_p.client_p[networkState->receive_p.client_id].pos_z 
+                                  << ")" << std::endl;
+                        break;
+                    }
+                }
+            }
 
             //time-out if server hasnt sent update packet after x seconds
 
@@ -503,16 +506,14 @@ int Engine::udpConnect(NetworkState* networkState){
 
     return 0;
 }
-int Engine::udpSend_client(NetworkState* networkState, char* buffer, int size){
+void Engine::udpSend_client(NetworkState* networkState, char* buffer, int size){
     networkState->result = sendto(networkState->server_socket, buffer, size, 0, (struct sockaddr*) &networkState->server_address, sizeof(networkState->server_address));
     if(networkState->result == SOCKET_ERROR){
         networkState->error = WSAGetLastError();
         std::cout << "Error " << networkState->error << ": failed to send message." << std::endl;
-        return 1;
     }
-    return 0;
 }
-int Engine::udpReceive_client(NetworkState* networkState, char* buffer, int size){
+void Engine::udpReceive_client(NetworkState* networkState, char* buffer, int size){
 
     networkState->server_address_len = sizeof(networkState->server_address);
 
@@ -523,10 +524,8 @@ int Engine::udpReceive_client(NetworkState* networkState, char* buffer, int size
             //Empty Socket -> continue without blocking
         }else{
             std::cout << "Error " << networkState->error << ": failed to receive message." << std::endl;
-            return 1;
         }
     }
-    return 0;
 }
 int Engine::udpDisconnect(NetworkState* networkState){
 

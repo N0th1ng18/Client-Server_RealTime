@@ -98,21 +98,27 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                         if(client_id < 0){
                             //Server is full -> send CONNECTION_DECLINED
                             networkState->connect_response_P.MSG_TYPE = CONNECTION_DECLINED;
+                            std::cout << "Sent CONNECTION_DECLINED" << std::endl;
                             if(Engine_Server::udpSend_server(networkState, &networkState->client_address, (char*)&networkState->connect_response_P, sizeof(Connect_Response_P))){
-                                std::cout << "Error: Failed to send Server Full message." << std::endl;
+                                std::cout << "Error: Failed to send CONNECTION_DECLINED." << std::endl;
                                 break;
                             }
 
                         }
 
                         //Add client to slot
+               
+                // InetPtonW(AF_INET, networkState->address, &networkState->server_address.sin_addr.S_un.S_addr);
+
+                        networkState->slot_address[client_id].sin_family = AF_INET;
                         networkState->slot_address[client_id].sin_addr.S_un.S_addr = networkState->client_address.sin_addr.S_un.S_addr;
                         networkState->slot_address[client_id].sin_port = networkState->client_address.sin_port;
                         networkState->is_occupied[client_id] = true;
                         //Slot is available -> send CONNECTION_ACCEPTED
                         networkState->connect_response_P.MSG_TYPE = CONNECTION_ACCEPTED;
+                        std::cout << "Sent CONNECTION_ACCEPTED" << std::endl;
                         if(Engine_Server::udpSend_server(networkState, &networkState->client_address, (char*)&networkState->connect_response_P, sizeof(Connect_Response_P))){
-                            std::cout << "Error: Failed to send Connection Accepted message." << std::endl;
+                            std::cout << "Error: Failed to send CONNECTION_ACCEPTED." << std::endl;
                             break;
                         }
 
@@ -274,23 +280,30 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
     //Collisions?
 
     //Send game state to all active clients 20 times per second
-    // networkState->start_index_ptr = 0;
-    // Engine_Server::package_msg((char *)PROTOCOL_ID, 5, networkState);
-    // Engine_Server::package_msg((char *)MSG_GAME_PACKET, 1, networkState);
-    //Number of Clients
-    // char buffer[1]; //Max clients is 5 using 1 char
-    // sprintf_s(buffer, "%d", masterGameState->num_players);
-    // Engine_Server::package_msg(buffer, 1, networkState);
+    if(time - networkState->send_timer > MASTERSTATE_RESEND_TIME){
+        networkState->send_timer = time;
 
-    // for(int i=0; i < MAX_CLIENTS; i++){
-    //     if(masterGameState->slotlist_players[i]){ //if player is active
+        networkState->masterstate_p.num_clients = masterGameState->num_players;
+        for(int i=0; i < MAX_CLIENTS; i++){
+            if(masterGameState->slotlist_players[i]){ //if player is active
+                networkState->masterstate_p.client_p[i].pos_x = masterGameState->players[i].pos.x;
+                networkState->masterstate_p.client_p[i].pos_y = masterGameState->players[i].pos.y;
+                networkState->masterstate_p.client_p[i].pos_z = masterGameState->players[i].pos.z;
+            }
+        }
 
-    //         //send gamestate to active clients
-    //         //Package msg
-    //         //Send
+        //Send networkStaet->masterstate_p to all clients
+        for(int i=0; i < MAX_CLIENTS; i++){
+            if(masterGameState->slotlist_players[i]){ //if player is active
 
-    //     }
-    // }
+                networkState->masterstate_p.client_id = i;
+                if(Engine_Server::udpSend_server(networkState, &networkState->slot_address[i], (char*)&networkState->masterstate_p, sizeof(MasterState_P))){
+                    std::cout << "Error: Failed to send MasterGameState to client at ID: " << i << std::endl;
+                }
+
+            }
+        }
+    }
 
     //Client Timeout
 
@@ -351,6 +364,7 @@ int Engine_Server::udpConnect(NetworkState* networkState){
     networkState->server_address.sin_family = AF_INET;
     InetPtonW(AF_INET, networkState->address, &networkState->server_address.sin_addr.S_un.S_addr);
     networkState->server_address.sin_port = htons(networkState->server_port);
+
     networkState->server_address_len = sizeof(networkState->server_address);
 
     return 0;
@@ -362,12 +376,11 @@ int Engine_Server::udpSend_server(NetworkState* networkState, sockaddr_in* addre
     }
 
     //Send
-    std::cout << "Network: Sending DataGram..." << std::endl;
+    //std::cout << "Network: Sending DataGram..." << std::endl;
     networkState->result = sendto(networkState->server_socket, buffer, size, 0, (struct sockaddr*) address, sizeof(*address));
     if(networkState->result == SOCKET_ERROR){
         networkState->error = WSAGetLastError();
         std::cout << "Error " << networkState->error << ": failed to send message." << std::endl;
-        return 1;
     }
     return 0;
 }
@@ -387,7 +400,6 @@ int Engine_Server::udpReceive_server(NetworkState* networkState, char* buffer, i
             //Empty Socket -> continue without blocking
         }else{
             std::cout << "Error " << networkState->error << ": failed to receive message." << std::endl;
-            return 1;
         }
     }
     return 0;

@@ -53,16 +53,16 @@ struct Input_P{
 };
 //Receive
 struct Client_MS_P{
-	int client_id;
 	float pos_x;
 	float pos_y;
-	float pox_z;
+	float pos_z;
 };
 struct Receive_P{
 	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 	char MSG_TYPE = '5';
+	int client_id;
 	int num_clients;
-	Client_MS_P client_p[5];	//Max Clients
+	Client_MS_P client_p[MAX_CLIENTS];
 };
 
 //Structures
@@ -144,8 +144,8 @@ void updateViewport(WindowState* windowState);
 //Network Functions
 int udpInit(NetworkState* networkState);
 int udpConnect(NetworkState* networkState);
-int udpSend_client(NetworkState* networkState, char* buffer, int size);
-int udpReceive_client(NetworkState* networkState, char* buffer, int size);
+void udpSend_client(NetworkState* networkState, char* buffer, int size);
+void udpReceive_client(NetworkState* networkState, char* buffer, int size);
 int udpDisconnect(NetworkState* networkState);
 int udpCleanup(NetworkState* networkState);
 void package_msg(char* msg, int size, NetworkState* networkState);
