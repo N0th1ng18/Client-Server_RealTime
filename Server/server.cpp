@@ -25,6 +25,7 @@ int main(){
     //Structures
     Engine_Server::ServerLoopState serverLoopState = {};
     Engine_Server::NetworkState networkState = {};
+    Engine_Server::MasterGameState masterGameState = {};
 
     //Setup
     serverLoopState.updatesPerSecond = 1.0;
@@ -38,7 +39,8 @@ int main(){
     if(Engine_Server::udpServerBind(&networkState)){return 1;}
 
     //Run Server
-    Engine_Server::server_Loop(&networkState, &serverLoopState);
+    Engine_Server::server_Loop(&networkState, &serverLoopState, &masterGameState);
+    Engine_Server::destroyEngine_Server(&masterGameState);
 
     //Terminate Server
     if(Engine_Server::udpDisconnect(&networkState)){return 1;}

@@ -1,5 +1,6 @@
 #include "engine.h"
 
+#include <bitset>   //Delete this
 /*
     Nicholas Frey
 
@@ -103,19 +104,22 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
 
         accumulator += (double)(frameTime.QuadPart);
 
+        //Input
+        glfwPollEvents();
+
         while(accumulator >= dt){
-            Engine::update(time, renderState, networkState);
+            //Update
+            Engine::update(time, windowState, renderState, networkState);
             updateCounter++;
 
             time += dt / 1000000.0;
             accumulator -= dt;
         }
 
+        //Render
         alpha = accumulator / dt;
         Engine::render(windowState, renderResources, renderState);
         renderCounter++;
-
-        glfwPollEvents();
 
         //FPS
         QueryPerformanceCounter(&fpsEndTime);
@@ -192,7 +196,7 @@ void Engine::input(GLFWwindow* window, int key, int scancode, int action, int mo
 
 }
 
-void Engine::update(double time, RenderState* renderState, NetworkState* networkState){
+void Engine::update(double time, WindowState* windowState, RenderState* renderState, NetworkState* networkState){
 
     switch(renderState->clientState){
         case CONNECT_TO_SERVER:
@@ -273,42 +277,7 @@ void Engine::update(double time, RenderState* renderState, NetworkState* network
                         }
                     }
                 }
-                
-
-                //Print results -> Check if connected and -> Game or Failed_to_Connect
-                // std::cout << "Client Received: " << networkState->recv_msg_len << std::endl;
-                // for(int i=0; i < networkState->recv_msg_len; i++){
-                //     std::cout << networkState->recv_buffer[i];
-                // }
-                // std::cout << std::endl;
             }
-            //Send Packet once every second
-            //Check if it has a message
-            //if so did we connect. 
-            //Yes -> Connected
-            //No message -> do nothing
-            //Failed to connect -> Failed to connect
-
-            //Send Packet once every second and check response!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            // if(udpSend_client(networkState)){
-            //     renderState->clientState = FAILED_TO_CONNECT; 
-            //     break;
-            // }
-
-            // //BLOCKING (MAKE THIS NOT BLOCKING found at engine_server.cpp line 130.)
-
-            
-
-            //NON-BLOCKING
-            //Resend Timer
-            //Timeout Timer
-            //Read Packet
-                //Connected
-                    //Set Connected to True
-                    //Set State to Game
-                //Not Connected && Not TimedOut
-                    //Send Connection packet
-
             break;
         }
         case FAILED_TO_CONNECT:
@@ -319,13 +288,23 @@ void Engine::update(double time, RenderState* renderState, NetworkState* network
         }
         case CONNECTED:
         {
+            //Send Input Packet to server
+            getButtonsBitset(windowState, networkState);
+            networkState->start_index_ptr = 0;
+            Engine::package_msg((char *)PROTOCOL_ID, 5, networkState);
+            Engine::package_msg((char *)MSG_INPUT_PACKET, 1, networkState);
+            Engine::package_msg((char *)&networkState->inputcmd.buttons, 1, networkState);
+
+            if(Engine::udpSend_client(networkState)){
+                std::cout << "Failed to send input packet" << std::endl;
+                break;
+            }
+
+            //Read packets from server and update render state
+
             //time-out if server hasnt sent update packet after x seconds
 
-            //send input packets to server
-            //Receive state updates from server
-            //  -> update render state
-
-            std::cout << "CONNECTED" << std::endl;
+            //std::cout << "CONNECTED" << std::endl;
             break;
         }
             
@@ -644,3 +623,37 @@ glm::mat4 FPS_ViewMatrix( glm::vec3 pos, float pitch, float yaw )
     return viewMatrix;
 }
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ HELPER FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+
+/**************************************** BITWISE FUNCTIONS *************************************************/
+
+void Engine::getButtonsBitset(WindowState* windowState, NetworkState* networkState){
+
+    //W
+    if(windowState->key_W){
+        networkState->inputcmd.buttons |= 1UL << 3;
+    }else{
+        networkState->inputcmd.buttons &= ~(1UL << 3);
+    }
+
+    //A
+    if(windowState->key_A){
+        networkState->inputcmd.buttons |= 1UL << 2;
+    }else{
+        networkState->inputcmd.buttons &= ~(1UL << 2);
+    }
+    //S
+    if(windowState->key_S){
+        networkState->inputcmd.buttons |= 1UL << 1;
+    }else{
+        networkState->inputcmd.buttons &= ~(1UL << 1);
+    }
+    //D
+    if(windowState->key_D){
+        networkState->inputcmd.buttons |= 1UL;
+    }else{
+        networkState->inputcmd.buttons &= ~(1UL);
+    }
+
+}
+
+/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BITWISE FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/

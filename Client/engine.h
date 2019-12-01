@@ -27,18 +27,24 @@ const double CONNECT_TIMOUT = 10.0;	//Seconds
 const int PROTOCOL_ID_LEN = 5;
 const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 const char MSG_CONNECTION_REQUEST[1] = {'1'};
+const char MSG_INPUT_PACKET[1] = {'4'};
 #define MINIMUM_PACKET_SIZE 6	//Protocol_ID(5) + MessageType(1)
 #define FAILED_PROTOCOL -1
 #define CONNECTION_REQUEST 1
 #define CONNECTION_ACCEPTED 2
 #define CONNECTION_DECLINED 3
-#define GAME_PACKET 4
+#define GAME_PACKET 5
 
 
 namespace Engine
 {
 
 //Structures
+struct UserInput{
+	//double time; 	//Time Input happend
+	char buttons;	//Byte: ---- WASD
+};
+
 struct WindowState{
 	int pos[2] = {0, 0};
 	int width = 800;
@@ -74,6 +80,8 @@ struct NetworkState{
 	//Client
 	bool isConnected = false;
 	double connect_timer;
+	UserInput inputcmd;
+
 	//Server
 	PCWSTR address;
 	unsigned short server_port;
@@ -82,8 +90,6 @@ struct NetworkState{
 	int server_address_len = sizeof(server_address);
 	sockaddr_in client_address;
 	int client_address_len = sizeof(client_address);
-
-	//Client Address array
 	
 	//Messages
 	int start_index_ptr;					//stores the next open space to write msg && The total size of msg written
@@ -97,7 +103,7 @@ struct NetworkState{
 int initEngine(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState);
 void loop(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState, NetworkState* networkState);
 void input(GLFWwindow* window, int key, int scancode, int action, int mods);
-void update(double time, RenderState* renderState, NetworkState* networkState);
+void update(double time, WindowState* windowState, RenderState* renderState, NetworkState* networkState);
 void render(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
 void destroyEngine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
 
@@ -121,6 +127,9 @@ void package_msg(char* msg, int size, NetworkState* networkState);
 
 //Protocol Functions
 int checkProtocol(char* buffer, int buffer_len);
+
+//Bitwise Functions
+void getButtonsBitset(WindowState* windowState, NetworkState* networkState);
 
 }
 

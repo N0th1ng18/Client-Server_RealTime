@@ -9,10 +9,17 @@
             - Implement non-blocking sockets.
         * Could improve connection protocol security but is outside the scope of this project
 
-/*
+*/
+
+//Private Functions
+void resetNetForce(glm::vec3* netforce);
+void addForce2D(glm::vec3* netforce, float force, float theta);
+void addForce3D(glm::vec3* netforce, float force, float theta, float phi);
+void addForceVec(glm::vec3* netforce, float x, float y, float z);
+float degreesToRadians(float degrees);
 
 /***************************************** SERVER FUNCTIONS *******************************************/
-void Engine_Server::server_Loop(NetworkState* networkState, ServerLoopState* serverLoopState){
+void Engine_Server::server_Loop(NetworkState* networkState, ServerLoopState* serverLoopState, MasterGameState* masterGameState){
 
     double time = 0.0;
     double dt = 1000000.0 / serverLoopState->updatesPerSecond;
@@ -49,7 +56,7 @@ void Engine_Server::server_Loop(NetworkState* networkState, ServerLoopState* ser
         accumulator += (double)(frameTime.QuadPart);
 
         while(accumulator >= dt){
-            if(Engine_Server::update(networkState, time)){
+            if(Engine_Server::update(networkState, masterGameState, time)){
                 serverLoopState->isRunning = false;
                 break;
             }
@@ -74,7 +81,7 @@ void Engine_Server::server_Loop(NetworkState* networkState, ServerLoopState* ser
 
 }
 
-int Engine_Server::update(NetworkState* networkState, double time){
+int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGameState, double time){
 
     //Process All Received Messages
     do{
@@ -87,8 +94,8 @@ int Engine_Server::update(NetworkState* networkState, double time){
                     case CONNECTION_REQUEST:
                     {
                         //Check for open slot
-                        int avail_slot = Engine_Server::getAvailSlot(networkState);
-                        if(avail_slot < 0){
+                        int client_id = Engine_Server::getAvailSlot(networkState);
+                        if(client_id < 0){
                             //Server is full -> send CONNECTION_DECLINED
                             networkState->start_index_ptr = 0;
                             Engine_Server::package_msg((char *)PROTOCOL_ID, 5, networkState);
@@ -101,9 +108,9 @@ int Engine_Server::update(NetworkState* networkState, double time){
                         }
 
                         //Add client to slot
-                        networkState->slot_address[avail_slot].sin_addr.S_un.S_addr = networkState->client_address.sin_addr.S_un.S_addr;
-                        networkState->slot_address[avail_slot].sin_port = networkState->client_address.sin_port;
-                        networkState->is_occupied[avail_slot] = true;
+                        networkState->slot_address[client_id].sin_addr.S_un.S_addr = networkState->client_address.sin_addr.S_un.S_addr;
+                        networkState->slot_address[client_id].sin_port = networkState->client_address.sin_port;
+                        networkState->is_occupied[client_id] = true;
                         //Slot is available -> send CONNECTION_ACCEPTED
                         networkState->start_index_ptr = 0;
                         Engine_Server::package_msg((char *)PROTOCOL_ID, 5, networkState);
@@ -112,6 +119,17 @@ int Engine_Server::update(NetworkState* networkState, double time){
                         if(Engine_Server::udpSend_server(networkState, &networkState->client_address)){
                             std::cout << "Error: Failed to send Connection Accepted message." << std::endl;
                             break;
+                        }
+
+                        //Spawn Connected Player
+                        if(!masterGameState->isSpawned[client_id]){
+                            
+                            Player* player = addPlayer(masterGameState);
+                            player->pos = glm::vec3(0.0f, 0.0f, 0.0f);
+                            player->vel = glm::vec3(0.0f, 0.0f, 0.0f);
+                            player->acc = glm::vec3(0.0f, 0.0f, 0.0f);
+                            
+                            masterGameState->isSpawned[client_id] = true;
                         }
 
                         std::cout << "---------------Slots---------------" << std::endl;
@@ -127,10 +145,41 @@ int Engine_Server::update(NetworkState* networkState, double time){
                         //std::cout << "CONNECTION_REQUEST" << std::endl;
                         break;
                     }
-                    case GAME_PACKET:
+                    case INPUT_PACKET:
                     {
-                        //Incoming input packets -> Update Server State
-                        
+                        //Incoming input packets -> Update MASTER State
+
+                        int clientID = getClientID(networkState);
+                        if(clientID < 0){   //Sender needs to prove that they are connected
+                            //Sender is not connected -> drop packet
+                            break;
+                        }
+                        //Save Button Key Presses
+                        char keyPresses = networkState->recv_buffer[6];
+                        //W
+                        if(keyPresses & (1UL << 3)){
+                            masterGameState->key_W[clientID] = true;
+                        }else{
+                            masterGameState->key_W[clientID] = false;
+                        }
+                        //A
+                        if(keyPresses & (1UL << 2)){
+                            masterGameState->key_A[clientID] = true;
+                        }else{
+                            masterGameState->key_A[clientID] = false;
+                        }
+                        //S
+                        if(keyPresses & (1UL << 1)){
+                            masterGameState->key_S[clientID] = true;
+                        }else{
+                            masterGameState->key_S[clientID] = false;
+                        }
+                        //D
+                        if(keyPresses & (1UL << 0)){
+                            masterGameState->key_D[clientID] = true;
+                        }else{
+                            masterGameState->key_D[clientID] = false;
+                        }
                         break;
                     }
                     case FAILED_PROTOCOL:
@@ -146,17 +195,106 @@ int Engine_Server::update(NetworkState* networkState, double time){
 
     }while(networkState->recv_msg_len >= 0 /* && receiveMessageTimeout*/);
 
+    //Step MasterGameState
+    for(int i=0; i < MAX_CLIENTS; i++){
+        if(masterGameState->slotlist_players[i]){ //if player is active
 
-    //While(messages exist to be read)
-        //Read messages from socket
-        //Process messages
-        //update state
+            Engine_Server::Player* player = &masterGameState->players[i];
+            bool w = masterGameState->key_W[i];
+            bool a = masterGameState->key_A[i];
+            bool s = masterGameState->key_S[i];
+            bool d = masterGameState->key_D[i];
+            //No movement
+            if((!w && !a && !s && !d)               
+                        || (w && !a && s && !d)
+                        || (!w && a && !s && d)
+                        || (w && a && s && d)){
+                    player->mov_force = 0.0f;
+            //Up
+            }else if((w && !a && !s && !d)
+                        || (w && a && !s && d)){
+                    player->theta = 90.0f;
+                    player->mov_force = player->mov_acc;
+            //Left
+            }else if((!w && a && !s && !d)
+                        || (w && a && s && !d)){
+                    player->theta = 180.0f;
+                    player->mov_force = player->mov_acc;
+            //Down
+            }else if((!w && !a && s && !d)
+                        || (!w && a && s && d)){
+                    player->theta = 270.0f;
+                    player->mov_force = player->mov_acc;
+            //Right
+            }else if((!w && !a && !s && d)
+                        || (w && !a && s && d)){
+                    player->theta = 270.0f;
+                    player->mov_force = player->mov_acc;
+            //Up-Right
+            }else if((w && !a && !s && d)){
+                    player->theta = 45.0f;
+                    player->mov_force = player->mov_acc;
+            //Up-Left
+            }else if((w && a && !s && !d)){
+                    player->theta = 135.0f;
+                    player->mov_force = player->mov_acc;
+            //Bottom-Left
+            }else if((!w && a && s && !d)){
+                    player->theta = 225.0f;
+                    player->mov_force = player->mov_acc;
+            //Bottom-Right
+            }else if((!w && !a && s && d)){
+                    player->theta = 315.0f;
+                    player->mov_force = player->mov_acc;
+            }
 
-    //Step Physics!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //Force
+            resetNetForce(&player->netforce);
+            addForce2D(&player->netforce, player->mov_force,player->theta);
+            addForceVec(&player->netforce, -player->vel.x * player->mov_friction, -player->vel.y * player->mov_friction, -player->vel.z * player->mov_friction);
 
-    //Send game state to each client x times per second or every X ms
+            //Integration
+            player->acc.x = player->netforce.x / player->mass;
+            player->acc.y = player->netforce.y / player->mass;
+            player->acc.z = player->netforce.z / player->mass;
+            player->vel.x = player->vel.x + player->acc.x;
+            player->vel.y = player->vel.y + player->acc.y;
+            player->vel.z = player->vel.z + player->acc.z;
+            player->pos.x = player->pos.x + player->vel.x;
+            player->pos.y = player->pos.y + player->vel.y;
+            player->pos.z = player->pos.z + player->vel.z;
+
+        }
+    }
+
+    //Collisions?
+
+    //Send game state to all active clients 20 times per second
+    // networkState->start_index_ptr = 0;
+    // Engine_Server::package_msg((char *)PROTOCOL_ID, 5, networkState);
+    // Engine_Server::package_msg((char *)MSG_GAME_PACKET, 1, networkState);
+    //Number of Clients
+    // char buffer[1]; //Max clients is 5 using 1 char
+    // sprintf_s(buffer, "%d", masterGameState->num_players);
+    // Engine_Server::package_msg(buffer, 1, networkState);
+
+    // for(int i=0; i < MAX_CLIENTS; i++){
+    //     if(masterGameState->slotlist_players[i]){ //if player is active
+
+    //         //send gamestate to active clients
+    //         //Package msg
+    //         //Send
+
+    //     }
+    // }
+
+    //Client Timeout
 
     return 0;
+}
+
+void Engine_Server::destroyEngine_Server(MasterGameState* masterGameState){
+    destoryMasterGameState(masterGameState);
 }
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SERVER FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
@@ -287,14 +425,44 @@ void Engine_Server::package_msg(char* msg, int size,NetworkState* networkState){
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NETWORK FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 
-/**************************************** SLOT FUNCTIONS *************************************************/
-//https://gafferongames.com/post/client_server_connection/
-// bool Engine_Server::hasSlot(NetworkState* networkState, ULONG address, USHORT port){
+/**************************************** MasterGameState FUNCTIONS *************************************************/
+
+Engine_Server::Player* Engine_Server::addPlayer(MasterGameState* masterGameState){
+
+    //Check Max
+    if(masterGameState->num_players > MAX_CLIENTS){
+        return NULL;
+    }
+
+    //Mark slot in slotlist
+    masterGameState->slotlist_players[masterGameState->num_players] = true;
+
+    //Return index and then increment num_cameras
+    return &masterGameState->players[masterGameState->num_players++];
+
+}
+void Engine_Server::removePlayer(MasterGameState* masterGameState, int id){
+
+    //Boundary Check
+    if(id >= masterGameState->num_players || id < 0){
+        return;
+    }
+
+    //Mark slot as free
+    masterGameState->slotlist_players[id] = false;
+
+    //Decrement count
+    masterGameState->num_players--;
+}
+
+void Engine_Server::destoryMasterGameState(MasterGameState* masterGameState){
+    delete[] masterGameState->players;
+
+    delete[] masterGameState->slotlist_players;
+}
 
 
-// }
-
-/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SLOT FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MasterGameState FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 
 
@@ -346,17 +514,68 @@ int Engine_Server::getAvailSlot(NetworkState* networkState){
         //Check if slot is being used
         if(!networkState->is_occupied[i]){
             avail_id = i;
-            return avail_id;
+            return avail_id;    //Return open slot with new client_id
         //Check if address and port are equal
         }else if(networkState->slot_address[i].sin_addr.S_un.S_addr == networkState->client_address.sin_addr.S_un.S_addr 
                     && networkState->slot_address[i].sin_port == networkState->client_address.sin_port){
             avail_id = i;
-            return avail_id;
+            return avail_id;    //Return existing client_id
             
         }
     }
 
-    return avail_id;
+    return avail_id;    //Return -1 "no slots available"
 
 }
+
+int Engine_Server::getClientID(NetworkState* networkState){
+
+    for(int i=0; i < MAX_CLIENTS; i++){
+        //Check if slot is being used
+        if(networkState->is_occupied[i] 
+                    && networkState->slot_address[i].sin_addr.S_un.S_addr == networkState->client_address.sin_addr.S_un.S_addr 
+                    && networkState->slot_address[i].sin_port == networkState->client_address.sin_port){
+            return i;
+        }
+    }
+
+    return -1;
+}
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ PROTOCOL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+
+
+/**************************************** PRIVATE FUNCTIONS **********************************************/
+ 
+void resetNetForce(glm::vec3* netforce){
+    netforce->x = 0.0f;
+    netforce->y = 0.0f;
+    netforce->z = 0.0f;
+}
+void addForce2D(glm::vec3* netforce, float force, float theta){
+    //Degrees to Radians
+    theta = degreesToRadians(theta);
+
+    netforce->x = netforce->x + (force * sin(theta));
+    netforce->y = netforce->y + (force * cos(theta));
+}
+void addForce3D(glm::vec3* netforce, float force, float theta, float phi){
+    //Degrees to Radians
+    theta = degreesToRadians(theta);
+    phi = degreesToRadians(phi);
+
+    netforce->x = netforce->x + (force * sin(theta) * sin(phi));
+    netforce->y = netforce->y + (force * cos(theta));
+    netforce->z = netforce->z + (force * sin(theta) * cos(phi));
+}
+
+void addForceVec(glm::vec3* netforce, float x, float y, float z){
+
+    netforce->x = netforce->x + x;
+    netforce->y = netforce->y + y;
+    netforce->z = netforce->z + z;
+}
+float degreesToRadians(float degrees){
+    return (degrees  * (float)(PI / 180.0));
+}
+
+/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ PRIVATE FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
