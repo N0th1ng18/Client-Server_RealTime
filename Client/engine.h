@@ -53,6 +53,7 @@ struct Input_P{
 };
 //Receive
 struct Client_MS_P{
+	bool isActive;
 	float pos_x;
 	float pos_y;
 	float pos_z;

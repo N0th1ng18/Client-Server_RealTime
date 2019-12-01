@@ -37,7 +37,7 @@
         * Client-Server Setup and test
         *   - Setup Basic Connection                                                                        -Done       (Questions to Answer: Create a timer,threads, How to message ping time)              
         *   - Setup Ping Delay for testing                                          (1 day)
-        *   - Setup Dumb Client                                                     (1 day)
+        *   - Setup Dumb Client                                                                             -Done       (send timestamp to limit out of order packets)
         *   - Setup Client-Side Prediction                                          (2 day)
         *   - Setup Server Reconciliation                                           (2 day)
         *   - Setup Entity Interpolation                                            (1 day)
@@ -247,11 +247,13 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                 {
                     case CONNECTION_ACCEPTED:
                     {
+                        std::cout << "Client: Connection Accepted" << std::endl;
                         renderState->clientState = CONNECTED;
                         break;
                     }
                     case CONNECTION_DECLINED:
                     {
+                        std::cout << "Client: Connection Failed" << std::endl;
                         renderState->clientState = FAILED_TO_CONNECT;
                         break;
                     }
@@ -266,7 +268,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
         }
         case FAILED_TO_CONNECT:
         {
-            std::cout << "FAILED_TO_CONNECT" << std::endl;
+            std::cout << "Client: Connection Failed" << std::endl;
             break;
         }
         case CONNECTED:
@@ -284,17 +286,65 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                     case GAME_PACKET:
                     {
                         //Update RenderState
-                        std::cout << "ID: " << networkState->receive_p.client_id 
-                                  << " | pos: (" << networkState->receive_p.client_p[networkState->receive_p.client_id].pos_x 
-                                  << ", " << networkState->receive_p.client_p[networkState->receive_p.client_id].pos_y 
-                                  << ", " << networkState->receive_p.client_p[networkState->receive_p.client_id].pos_z 
-                                  << ")" << std::endl;
+                        //For Each Player
+                        for(int i=0; i < MAX_CLIENTS; i++){
+                            if(networkState->receive_p.client_p[i].isActive){ //If Client is active
+                                Engine::Client_MS_P* client = &networkState->receive_p.client_p[i];
+                                Player* player = &renderState->players[i];
+                                //lookup client_id at index client_id
+                                if(renderState->slotlist_players[i]){
+                                    //Update Player
+                                    player->pos.x = client->pos_x;
+                                    player->pos.y = client->pos_y;
+                                    player->pos.z = client->pos_z;
+                                    //Create Transformation Matrix
+                                    player->transformation = glm::mat4(1.0f);
+                                    player->transformation = glm::scale(player->transformation, player->scale);// Scale
+                                    player->transformation = glm::rotate(player->transformation, player->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
+                                    player->transformation = glm::rotate(player->transformation, player->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
+                                    player->transformation = glm::rotate(player->transformation, player->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
+                                    player->transformation = glm::translate(player->transformation, player->pos);// Translate
+                                }else{
+                                    //Add Player
+                                    Player* newPlayer = addPlayer(renderState);
+                                    newPlayer->program_index = 0;
+                                    newPlayer->vao_index = 0;
+                                    newPlayer->texture_index = 0;
+                                    newPlayer->camera_index = 0;
+                                    newPlayer->offset = glm::vec3(0.0f, 0.0f, 0.0f);
+                                    newPlayer->pos = glm::vec3(client->pos_x, client->pos_y, client->pos_z);
+                                    newPlayer->scale = glm::vec3(10.0f, 10.0f, 1.0f);
+                                    newPlayer->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
+                                    //Create Transformation Matrix
+                                    newPlayer->transformation = glm::mat4(1.0f);
+                                    newPlayer->transformation = glm::scale(newPlayer->transformation, newPlayer->scale);// Scale
+                                    newPlayer->transformation = glm::rotate(newPlayer->transformation, newPlayer->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
+                                    newPlayer->transformation = glm::rotate(newPlayer->transformation, newPlayer->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
+                                    newPlayer->transformation = glm::rotate(newPlayer->transformation, newPlayer->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
+                                    newPlayer->transformation = glm::translate(newPlayer->transformation, newPlayer->pos);// Translate
+                                }
+                            }
+                        }
+
+                        //Debug
+                        std::cout << "-------------Players-------------" << std::endl;
+                        for(int i=0; i < renderState->MAX_PLAYERS; i++){
+                            std::cout << i << ": " << renderState->slotlist_players[i];
+                            if(renderState->slotlist_players[i]){
+                                std::cout << renderState->players[i].pos.x 
+                                << "\t|\t"<< renderState->players[i].pos.y 
+                                << "\t|\t"<< renderState->players[i].pos.z << std::endl;
+                            }else{
+                                std::cout << std::endl;
+                            }
+                        }
+
                         break;
                     }
                 }
             }
 
-            //time-out if server hasnt sent update packet after x seconds
+            //time-out if server hasnt sent update packet after x seconds & Disconnect Packets
 
             //std::cout << "CONNECTED" << std::endl;
             break;
@@ -321,6 +371,7 @@ void Engine::render(WindowState* windowState, RenderResources* renderResources, 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //render state needs to have a main_menu, settings, join_server, ect. (Maps) -> can be loaded from file.
+    renderPlayers(renderResources, renderState);
     renderObjects(renderResources, renderState);
     renderTexts(renderResources, renderState, windowState->width, windowState->height);
 

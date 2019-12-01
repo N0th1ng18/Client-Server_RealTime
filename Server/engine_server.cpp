@@ -215,25 +215,25 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
             //Up
             }else if((w && !a && !s && !d)
                         || (w && a && !s && d)){
-                    player->theta = 90.0f;
+                    player->theta = 0.0f;
                     player->mov_force = player->mov_acc;
                     //std::cout << "Up" << std::endl;
             //Left
             }else if((!w && a && !s && !d)
                         || (w && a && s && !d)){
-                    player->theta = 180.0f;
+                    player->theta = 270.0f;
                     player->mov_force = player->mov_acc;
                     //std::cout << "Left" << std::endl;
             //Down
             }else if((!w && !a && s && !d)
                         || (!w && a && s && d)){
-                    player->theta = 270.0f;
+                    player->theta = 180.0f;
                     player->mov_force = player->mov_acc;
                     //std::cout << "Down" << std::endl;
             //Right
             }else if((!w && !a && !s && d)
                         || (w && !a && s && d)){
-                    player->theta = 270.0f;
+                    player->theta = 90.0f;
                     player->mov_force = player->mov_acc;
                     //std::cout << "Right" << std::endl;
             //Up-Right
@@ -243,7 +243,7 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                     //std::cout << "Up-Right" << std::endl;
             //Up-Left
             }else if((w && a && !s && !d)){
-                    player->theta = 135.0f;
+                    player->theta = 315.0f;
                     player->mov_force = player->mov_acc;
                     //std::cout << "Up-Left" << std::endl;
             //Bottom-Left
@@ -253,15 +253,17 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                     //std::cout << "Bottom-Left" << std::endl;
             //Bottom-Right
             }else if((!w && !a && s && d)){
-                    player->theta = 315.0f;
+                    player->theta = 135.0f;
                     player->mov_force = player->mov_acc;
                     //std::cout << "Bottom-Right" << std::endl;
             }
 
             //Force
             resetNetForce(&player->netforce);
-            addForce2D(&player->netforce, player->mov_force,player->theta);
+            addForce2D(&player->netforce, player->mov_force, player->theta);
             addForceVec(&player->netforce, -player->vel.x * player->mov_friction, -player->vel.y * player->mov_friction, -player->vel.z * player->mov_friction);
+
+
 
             //Integration
             player->acc.x = player->netforce.x / player->mass;
@@ -273,7 +275,6 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
             player->pos.x = player->pos.x + player->vel.x;
             player->pos.y = player->pos.y + player->vel.y;
             player->pos.z = player->pos.z + player->vel.z;
-
         }
     }
 
@@ -286,9 +287,12 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
         networkState->masterstate_p.num_clients = masterGameState->num_players;
         for(int i=0; i < MAX_CLIENTS; i++){
             if(masterGameState->slotlist_players[i]){ //if player is active
+                networkState->masterstate_p.client_p[i].isActive = true;
                 networkState->masterstate_p.client_p[i].pos_x = masterGameState->players[i].pos.x;
                 networkState->masterstate_p.client_p[i].pos_y = masterGameState->players[i].pos.y;
                 networkState->masterstate_p.client_p[i].pos_z = masterGameState->players[i].pos.z;
+            }else{
+                networkState->masterstate_p.client_p[i].isActive = false;
             }
         }
 
@@ -301,11 +305,13 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                     std::cout << "Error: Failed to send MasterGameState to client at ID: " << i << std::endl;
                 }
 
+            }else{
+                networkState->masterstate_p.client_id = -1;
             }
         }
     }
 
-    //Client Timeout
+    //Client Timeout & Disconnect Packets
 
     return 0;
 }

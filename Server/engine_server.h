@@ -49,6 +49,7 @@ struct Connect_Response_P{
 	char MSG_TYPE;
 };
 struct Client_MS_P{
+	bool isActive;
 	float pos_x;
 	float pos_y;
 	float pos_z;
@@ -104,8 +105,8 @@ struct NetworkState{
 
 struct Player{
 	float mass = 100.0f;
-	float mov_friction = 0.2f;
-	float mov_acc = 10.0f;
+	float mov_friction = 15.00f;
+	float mov_acc = 20.0f;
 	float mov_force = 0.0f;
 	float theta = 0.0f;
 	float phi = 0.0f;

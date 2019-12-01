@@ -11,6 +11,7 @@ int main(){
 
 	//Constants
 	const int MAX_CAMERAS = 10;
+    const int MAX_PLAYERS = 5;
 	const int MAX_OBJECTS = 10;
 	const int MAX_TEXTS = 10;
 	
@@ -19,7 +20,7 @@ int main(){
 	Engine::OpenGLState openGLState = {};
     Engine::NetworkState networkState = {};
 	RenderResources renderResources = {}; 
-	RenderState renderState = RenderState(MAX_CAMERAS,MAX_OBJECTS,MAX_TEXTS);
+	RenderState renderState = RenderState(MAX_CAMERAS, MAX_PLAYERS, MAX_OBJECTS, MAX_TEXTS);
 	
 	//Setup
 	windowState.isFullscreen = false;
@@ -94,47 +95,47 @@ int addEntities(Engine::WindowState* windowState, RenderState* renderState){
 
     //Scene
     Camera* camera0 = addCamera(renderState);
-    camera0->pos = glm::vec3(0.0f, 0.0f, 0.0f);
+    camera0->pos = glm::vec3(static_cast<float>(windowState->width) / 2.0f, static_cast<float>(windowState->height) / 2.0f, 0.0f);
     camera0->projection = glm::ortho<float>(0.0f, static_cast<float>(windowState->width), 0.0f,  static_cast<float>(windowState->height),  -1.0f, 1.0f);
     camera0->view = glm::translate(camera0->view, camera0->pos);
 
     //Create Objects
-	Object* object = addObject(renderState);
-    object->program_index = 0;
-    object->vao_index = 0;
-    object->texture_index = 0;
-    object->camera_index = 0;
-    object->offset = glm::vec3(0.0f, 0.0f, 0.0f);
-    object->pos = glm::vec3(0.5f, 0.5f, 0.0f);
-    object->scale = glm::vec3(800.0f, 800.0f, 1.0f);
-    object->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
-    object->transformation = glm::scale(object->transformation, object->scale);// Scale
-    object->transformation = glm::rotate(object->transformation, object->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
-    object->transformation = glm::rotate(object->transformation, object->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
-    object->transformation = glm::rotate(object->transformation, object->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
-    object->transformation = glm::translate(object->transformation, object->pos);// Translate
+	// Object* object = addObject(renderState);
+    // object->program_index = 0;
+    // object->vao_index = 0;
+    // object->texture_index = 0;
+    // object->camera_index = 0;
+    // object->offset = glm::vec3(0.0f, 0.0f, 0.0f);
+    // object->pos = glm::vec3(0.5f, 0.5f, 0.0f);
+    // object->scale = glm::vec3(800.0f, 800.0f, 1.0f);
+    // object->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
+    // object->transformation = glm::scale(object->transformation, object->scale);// Scale
+    // object->transformation = glm::rotate(object->transformation, object->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
+    // object->transformation = glm::rotate(object->transformation, object->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
+    // object->transformation = glm::rotate(object->transformation, object->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
+    // object->transformation = glm::translate(object->transformation, object->pos);// Translate
 
 
     //Create Texts    
-    Text* text = addText(renderState);
-    text->texture_index = 1;
-    text->vao_index = 1;
-    text->vbo_index = 0;
-    text->program_index = 1;
-    text->fontFile_index = 0;
-    text->camera_index = 0;
-    text->text = "Text is awesome!";
-    text->f_color = glm::vec3(0.0f, 0.0f, 0.0f);
-    text->c_width = 0.47f;
-    text->c_edge = 0.2f;
-    text->pos = glm::vec3(200.0f, 200.0f, 0.0f);
-    text->scale = glm::vec3(0.5f, 0.5f, 0.5f);
-    text->rotate = glm::vec3(glm::radians(0.0f),glm::radians(0.0f),glm::radians(0.0f));
-    text->transformation = glm::scale(text->transformation, text->scale);// Scale
-    text->transformation = glm::rotate(text->transformation, text->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
-    text->transformation = glm::rotate(text->transformation, text->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
-    text->transformation = glm::rotate(text->transformation, text->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
-    text->transformation = glm::translate(text->transformation, text->pos);// Translate
+    // Text* text = addText(renderState);
+    // text->texture_index = 1;
+    // text->vao_index = 1;
+    // text->vbo_index = 0;
+    // text->program_index = 1;
+    // text->fontFile_index = 0;
+    // text->camera_index = 0;
+    // text->text = "Text is awesome!";
+    // text->f_color = glm::vec3(0.0f, 0.0f, 0.0f);
+    // text->c_width = 0.47f;
+    // text->c_edge = 0.2f;
+    // text->pos = glm::vec3(200.0f, 200.0f, 0.0f);
+    // text->scale = glm::vec3(0.5f, 0.5f, 0.5f);
+    // text->rotate = glm::vec3(glm::radians(0.0f),glm::radians(0.0f),glm::radians(0.0f));
+    // text->transformation = glm::scale(text->transformation, text->scale);// Scale
+    // text->transformation = glm::rotate(text->transformation, text->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
+    // text->transformation = glm::rotate(text->transformation, text->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
+    // text->transformation = glm::rotate(text->transformation, text->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
+    // text->transformation = glm::translate(text->transformation, text->pos);// Translate
 
     std::cout << "--------------Render State-----------------" << std::endl;
     std::cout << "Num_Cameras   \t=\t" << renderState->num_cameras << std::endl;

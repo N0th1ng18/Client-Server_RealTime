@@ -107,6 +107,24 @@ struct Camera{
     glm::mat4 view = glm::mat4(1.0f);
 };
 
+struct Player{
+    GLuint program_index;
+    GLuint vao_index;
+    GLuint texture_index;
+    GLuint camera_index;
+    //Position
+    glm::vec3 pos;
+    glm::vec3 vel;
+    glm::vec3 acc;
+    //Transforms
+    glm::vec3 offset;
+    glm::vec3 scale;
+    glm::vec3 rotate;
+    //Matrix
+    glm::mat4 transformation = glm::mat4(1.0f);
+    //...
+};
+
 struct Object{
     GLuint program_index;
     GLuint vao_index;
@@ -167,20 +185,25 @@ struct RenderResources{
 
 struct RenderState{ 
 
-    RenderState(const int max_cameras, const int max_objects, const int max_texts){
+    RenderState(const int max_cameras, const int max_players, const int max_objects, const int max_texts){
         //Save Size of Arrays
         MAX_CAMERAS = max_cameras;
+        MAX_PLAYERS = max_players;
         MAX_OBJECTS = max_objects;
         MAX_TEXTS = max_texts;
 
         //Allocate Entities on Heap
         cameras = new Camera[max_cameras];
+        players = new Player[max_players];
         objects = new Object[max_objects];
         texts = new Text[max_texts];
 
         //Initialize
         for(int i=0; i < max_cameras; i++){
             cameras[i] = {};
+        }
+        for(int i=0; i < max_players; i++){
+            players[i] = {};
         }
         for(int i=0; i < max_objects; i++){
             objects[i] = {};
@@ -195,12 +218,16 @@ struct RenderState{
             - Delete - mark slot not active
         */
         slotlist_cameras = new bool[max_cameras];
+        slotlist_players = new bool[max_players];
         slotlist_objects = new bool[max_objects];
         slotlist_texts = new bool[max_texts];
 
         //Initialize
         for(int i=0; i < max_cameras; i++){
             slotlist_cameras[i] = false;
+        }
+        for(int i=0; i < max_players; i++){
+            slotlist_players[i] = false;
         }
         for(int i=0; i < max_objects; i++){
             slotlist_objects[i] = false;
@@ -225,6 +252,12 @@ struct RenderState{
     bool* slotlist_cameras;
     int num_cameras = 0;
     Camera* cameras;
+
+    //Players
+    int MAX_PLAYERS;
+    bool* slotlist_players;
+    int num_players = 0;
+    Player* players;
 
     //Objects
     int MAX_OBJECTS;
@@ -252,15 +285,18 @@ int addFontFile(RenderResources* renderResources);
 
 //Add Entities
 Camera* addCamera(RenderState* renderState);
+Player* addPlayer(RenderState* renderState);
 Object* addObject(RenderState* renderState);
 Text* addText(RenderState* renderState);
 
 //Remove Entities
 void removeCamera(RenderState* renderState, int id);
+void removePlayer(RenderState* renderState, int id);
 void removeObject(RenderState* renderState, int id);
 void removeText(RenderState* renderState, int id);
 
 //Render Functions
+void renderPlayers(RenderResources* renderResources, RenderState* renderState);
 void renderObjects(RenderResources* renderResources, RenderState* renderState);
 void renderTexts(RenderResources* renderResources, RenderState* renderState, int screen_width, int screen_height); //renderState, Font, Color, Pos, Size, Orientation
 

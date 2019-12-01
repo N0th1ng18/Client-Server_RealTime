@@ -23,10 +23,46 @@ void bindTexture(GLuint texture_index, RenderResources* renderResources, RenderS
 }
 
 //Render
+void renderPlayers(RenderResources* renderResources, RenderState* renderState){
+
+    for(int i=0; i < renderState->num_players; i++){
+        if(renderState->slotlist_players[i] == true){
+
+            //Bind Program (Check if program is already bound)
+            bindProgram(renderState->players[i].program_index, renderResources, renderState);
+            //Bind VAO
+            bindVAO(renderState->players[i].vao_index, renderResources, renderState);
+            //Bind Texture
+            bindTexture(renderState->players[i].texture_index, renderResources, renderState);
+            //Uniforms
+            glUniformMatrix4fv(glGetUniformLocation(
+                            renderResources->programs[renderState->players[i].program_index].id, 
+                            "projection"),
+                            1, GL_FALSE, &renderState->cameras[renderState->objects[i].camera_index].projection[0][0]);
+            glUniformMatrix4fv(glGetUniformLocation(
+                            renderResources->programs[renderState->players[i].program_index].id, 
+                            "view"),
+                            1, GL_FALSE, &renderState->cameras[renderState->players[i].camera_index].view[0][0]);
+            glUniformMatrix4fv(glGetUniformLocation(
+                            renderResources->programs[renderState->players[i].program_index].id, 
+                            "translation"),
+                            1, GL_FALSE, &renderState->players[i].transformation[0][0]);
+            glUniform1i(glGetUniformLocation(
+                            renderResources->textures[renderState->players[i].texture_index], 
+                            "texture1"), 
+                            0); 
+            
+
+            //Draw
+            glDrawElements(GL_TRIANGLES, renderResources->vaos[renderState->players[i].vao_index].indices_size, GL_UNSIGNED_INT, (void*)0);
+        }
+    }
+}
+
 void renderObjects(RenderResources* renderResources, RenderState* renderState){
 
     for(int i=0; i < renderState->num_objects; i++){
-        if(renderState->slotlist_cameras[i] == true){
+        if(renderState->slotlist_objects[i] == true){
 
             //Bind Program (Check if program is already bound)
             bindProgram(renderState->objects[i].program_index, renderResources, renderState);
@@ -282,6 +318,20 @@ Camera* addCamera(RenderState* renderState){
     return &renderState->cameras[renderState->num_cameras++];
 }
 
+Player* addPlayer(RenderState* renderState){
+
+    //Check Max
+    if(renderState->num_players > renderState->MAX_PLAYERS){
+        return NULL;
+    }
+
+    //Mark slot in slotlist
+    renderState->slotlist_players[renderState->num_players] = true;
+
+    //Return index and then increment num_cameras
+    return &renderState->players[renderState->num_players++];
+}
+
 Object* addObject(RenderState* renderState){
 
     //Check Max
@@ -330,6 +380,20 @@ void removeCamera(RenderState* renderState, int id){
     renderState->num_cameras--;
 }
 
+void removePlayer(RenderState* renderState, int id){
+    
+    //Boundary Check
+    if(id >= renderState->num_players || id < 0){
+        return;
+    }
+
+    //Mark slot as free
+    renderState->slotlist_players[id] = false;
+
+    //Decrement count
+    renderState->num_players--;
+}
+
 void removeObject(RenderState* renderState, int id){
     
     //Boundary Check
@@ -360,10 +424,12 @@ void removeText(RenderState* renderState, int id){
 void destroyRenderState(RenderState* renderState){
 
     delete[] renderState->cameras;
+    delete[] renderState->players;
     delete[] renderState->objects;
     delete[] renderState->texts;
 
     delete[] renderState->slotlist_cameras;
+    delete[] renderState->slotlist_players;
     delete[] renderState->slotlist_objects;
     delete[] renderState->slotlist_texts;
 
