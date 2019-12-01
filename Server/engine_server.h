@@ -24,15 +24,15 @@
 const double SERVER_OUTPUT_DELAY = 1.0 / 20.0;	//20 times a second
 const int PROTOCOL_ID_LEN = 5;
 const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
-const char MSG_CONNECTION_ACCEPTED[1] = {'2'};
-const char MSG_CONNECTION_DECLINED[1] = {'3'};
-const char MSG_GAME_PACKET[1] = {'5'};
 #define MINIMUM_PACKET_SIZE 6	//Protocol_ID(5) + MessageType(1)
-#define FAILED_PROTOCOL -1
-#define CONNECTION_REQUEST 1
-#define CONNECTION_ACCEPTED 2
-#define INPUT_PACKET 4
+#define FAILED_PROTOCOL '0'
+#define CONNECTION_REQUEST '1'
+#define CONNECTION_ACCEPTED '2'
+#define CONNECTION_DECLINED '3'
+#define INPUT_PACKET '4'
+#define GAME_PACKET '5'
 
+//Math Stuff
 #define PI 3.14159265359
 
 
@@ -42,15 +42,32 @@ const char MSG_GAME_PACKET[1] = {'5'};
 namespace Engine_Server
 {
 
-//Structures
-
 //Network Message Structures
-struct UserInput{
+//Send
+struct Connect_Response_P{
 	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
-	char MSG_INPUT_PACKET[1] = {'4'};
-	char buttons;	//Byte: ---- WASD
+	char MSG_TYPE;
+};
+struct Client_MS_P{
+	int client_id;
+	float pos_x;
+	float pos_y;
+	float pox_z;
+};
+struct MasterState_P{
+	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+	char MSG_TYPE = '5';
+	int num_clients;
+	Client_MS_P* client_p;
+};
+//Receive
+struct Receive_P{
+	char PROTOCOL_ID[5];
+	char MSG_TYPE;
+	char buttons;//Byte: ---- WASD
 };
 
+//Structures
 struct ServerLoopState{
     //Loop
     bool isRunning = true;
@@ -69,6 +86,10 @@ struct NetworkState{
 	sockaddr_in server_address;
 	int server_address_len = sizeof(server_address);
 
+	//Packets
+	Connect_Response_P connect_response_P;
+	Receive_P receive_p;
+
 	//Client Connection Slots
 	bool is_occupied[MAX_CLIENTS] = {false};
 	sockaddr_in slot_address[MAX_CLIENTS] = {NULL};
@@ -77,10 +98,7 @@ struct NetworkState{
 	//Network
 	sockaddr_in client_address;
 	int client_address_len = sizeof(client_address);
-	int start_index_ptr;								//stores the next open space to write msg && The total size of msg written
-	char send_buffer[MAX_SEND_BUF_SIZE];
 	int recv_msg_len;
-	char recv_buffer[MAX_RECV_BUF_SIZE];
 };
 
 struct Player{
@@ -148,14 +166,14 @@ void destroyEngine_Server(MasterGameState* masterGameState);
 int udpInit(NetworkState* networkState);
 int udpServerBind(NetworkState* networkState);
 int udpConnect(NetworkState* networkState);
-int udpSend_server(NetworkState* networkState, sockaddr_in* address);
-int udpReceive_server(NetworkState* networkState);
+int udpSend_server(NetworkState* networkState, sockaddr_in* address, char* buffer, int size);
+int udpReceive_server(NetworkState* networkState, char* buffer, int size);
 int udpDisconnect(NetworkState* networkState);
 int udpCleanup(NetworkState* networkState);
 void package_msg(char* msg, int size, NetworkState* networkState);
 
 //Protocol Functions
-int checkProtocol(char* buffer, int buffer_len);
+char checkProtocol(NetworkState* networkState, int buffer_len);
 int getAvailSlot(NetworkState* networkState);
 int getClientID(NetworkState* networkState);
 

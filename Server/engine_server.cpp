@@ -85,11 +85,11 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
 
     //Process All Received Messages
     do{
-        if(Engine_Server::udpReceive_server(networkState)){return 1;}else{
+        if(!Engine_Server::udpReceive_server(networkState, (char*)&networkState->receive_p, sizeof(Receive_P))){
             //Check if message length is greater than 0
             if(networkState->recv_msg_len > 0){
                 //Check if message contains protocol ID
-                switch(checkProtocol(networkState->recv_buffer, networkState->recv_msg_len))
+                switch(checkProtocol(networkState, networkState->recv_msg_len))
                 {
                     case CONNECTION_REQUEST:
                     {
@@ -97,10 +97,8 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                         int client_id = Engine_Server::getAvailSlot(networkState);
                         if(client_id < 0){
                             //Server is full -> send CONNECTION_DECLINED
-                            networkState->start_index_ptr = 0;
-                            Engine_Server::package_msg((char *)PROTOCOL_ID, 5, networkState);
-                            Engine_Server::package_msg((char *)MSG_CONNECTION_DECLINED, 1, networkState);
-                            if(Engine_Server::udpSend_server(networkState, &networkState->client_address)){
+                            networkState->connect_response_P.MSG_TYPE = CONNECTION_DECLINED;
+                            if(Engine_Server::udpSend_server(networkState, &networkState->client_address, (char*)&networkState->connect_response_P, sizeof(Connect_Response_P))){
                                 std::cout << "Error: Failed to send Server Full message." << std::endl;
                                 break;
                             }
@@ -112,11 +110,8 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                         networkState->slot_address[client_id].sin_port = networkState->client_address.sin_port;
                         networkState->is_occupied[client_id] = true;
                         //Slot is available -> send CONNECTION_ACCEPTED
-                        networkState->start_index_ptr = 0;
-                        Engine_Server::package_msg((char *)PROTOCOL_ID, 5, networkState);
-                        Engine_Server::package_msg((char *)MSG_CONNECTION_ACCEPTED, 1, networkState);
-
-                        if(Engine_Server::udpSend_server(networkState, &networkState->client_address)){
+                        networkState->connect_response_P.MSG_TYPE = CONNECTION_ACCEPTED;
+                        if(Engine_Server::udpSend_server(networkState, &networkState->client_address, (char*)&networkState->connect_response_P, sizeof(Connect_Response_P))){
                             std::cout << "Error: Failed to send Connection Accepted message." << std::endl;
                             break;
                         }
@@ -155,7 +150,7 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                             break;
                         }
                         //Save Button Key Presses
-                        char keyPresses = networkState->recv_buffer[6];
+                        char keyPresses = networkState->receive_p.buttons;
                         //W
                         if(keyPresses & (1UL << 3)){
                             masterGameState->key_W[clientID] = true;
@@ -210,42 +205,51 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                         || (!w && a && !s && d)
                         || (w && a && s && d)){
                     player->mov_force = 0.0f;
+                    //std::cout << "No Movement" << std::endl;
             //Up
             }else if((w && !a && !s && !d)
                         || (w && a && !s && d)){
                     player->theta = 90.0f;
                     player->mov_force = player->mov_acc;
+                    //std::cout << "Up" << std::endl;
             //Left
             }else if((!w && a && !s && !d)
                         || (w && a && s && !d)){
                     player->theta = 180.0f;
                     player->mov_force = player->mov_acc;
+                    //std::cout << "Left" << std::endl;
             //Down
             }else if((!w && !a && s && !d)
                         || (!w && a && s && d)){
                     player->theta = 270.0f;
                     player->mov_force = player->mov_acc;
+                    //std::cout << "Down" << std::endl;
             //Right
             }else if((!w && !a && !s && d)
                         || (w && !a && s && d)){
                     player->theta = 270.0f;
                     player->mov_force = player->mov_acc;
+                    //std::cout << "Right" << std::endl;
             //Up-Right
             }else if((w && !a && !s && d)){
                     player->theta = 45.0f;
                     player->mov_force = player->mov_acc;
+                    //std::cout << "Up-Right" << std::endl;
             //Up-Left
             }else if((w && a && !s && !d)){
                     player->theta = 135.0f;
                     player->mov_force = player->mov_acc;
+                    //std::cout << "Up-Left" << std::endl;
             //Bottom-Left
             }else if((!w && a && s && !d)){
                     player->theta = 225.0f;
                     player->mov_force = player->mov_acc;
+                    //std::cout << "Bottom-Left" << std::endl;
             //Bottom-Right
             }else if((!w && !a && s && d)){
                     player->theta = 315.0f;
                     player->mov_force = player->mov_acc;
+                    //std::cout << "Bottom-Right" << std::endl;
             }
 
             //Force
@@ -351,7 +355,7 @@ int Engine_Server::udpConnect(NetworkState* networkState){
 
     return 0;
 }
-int Engine_Server::udpSend_server(NetworkState* networkState, sockaddr_in* address){
+int Engine_Server::udpSend_server(NetworkState* networkState, sockaddr_in* address, char* buffer, int size){
 
     if(networkState->is_socket_open == false){
         return 1;
@@ -359,7 +363,7 @@ int Engine_Server::udpSend_server(NetworkState* networkState, sockaddr_in* addre
 
     //Send
     std::cout << "Network: Sending DataGram..." << std::endl;
-    networkState->result = sendto(networkState->server_socket, networkState->send_buffer, networkState->start_index_ptr, 0, (struct sockaddr*) address, sizeof(*address));
+    networkState->result = sendto(networkState->server_socket, buffer, size, 0, (struct sockaddr*) address, sizeof(*address));
     if(networkState->result == SOCKET_ERROR){
         networkState->error = WSAGetLastError();
         std::cout << "Error " << networkState->error << ": failed to send message." << std::endl;
@@ -367,7 +371,7 @@ int Engine_Server::udpSend_server(NetworkState* networkState, sockaddr_in* addre
     }
     return 0;
 }
-int Engine_Server::udpReceive_server(NetworkState* networkState){
+int Engine_Server::udpReceive_server(NetworkState* networkState, char* buffer, int size){
 
     if(networkState->is_socket_open == false){
         return 1;
@@ -376,7 +380,7 @@ int Engine_Server::udpReceive_server(NetworkState* networkState){
     networkState->client_address_len = sizeof(networkState->client_address);
 
     //std::cout << "Network: Receiving DataGram..." << std::endl;
-    networkState->recv_msg_len = recvfrom(networkState->server_socket, networkState->recv_buffer, MAX_RECV_BUF_SIZE, 0, (struct sockaddr*) &networkState->client_address, &networkState->client_address_len);
+    networkState->recv_msg_len = recvfrom(networkState->server_socket, buffer, size, 0, (struct sockaddr*) &networkState->client_address, &networkState->client_address_len);
     if(networkState->recv_msg_len == SOCKET_ERROR){
         networkState->error = WSAGetLastError();
         if(networkState->error == WSAEWOULDBLOCK){
@@ -407,21 +411,6 @@ int Engine_Server::udpCleanup(NetworkState* networkState){
     return 0;
 }
 
-void Engine_Server::package_msg(char* msg, int size,NetworkState* networkState){
-    //Check if start_index is outside the bounds of the send buffer
-    if(networkState->start_index_ptr < 0 || networkState->start_index_ptr + size > MAX_SEND_BUF_SIZE){
-        std::cout << "ERROR: OutOfBounceException" << std::endl;
-        return;
-    }
-
-    //Write message to send_buffer
-    for(int i=networkState->start_index_ptr, j = 0; i < networkState->start_index_ptr + size; i++, j++){
-        networkState->send_buffer[networkState->start_index_ptr + j] = msg[j];
-    }
-
-    //Save start_index for future packages
-    networkState->start_index_ptr += size;
-}
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ NETWORK FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
 
@@ -484,7 +473,7 @@ void Engine_Server::destoryMasterGameState(MasterGameState* masterGameState){
                        |________________________________|
                 */
 
-int Engine_Server::checkProtocol(char* buffer, int buffer_len){
+char Engine_Server::checkProtocol(NetworkState* networkState, int buffer_len){
 
     //Check buffer length and discard packets that are too small
     if(buffer_len < MINIMUM_PACKET_SIZE){
@@ -494,14 +483,14 @@ int Engine_Server::checkProtocol(char* buffer, int buffer_len){
 
     //Check if protocol ID is equal
     for(int i=0; i < PROTOCOL_ID_LEN; i++){
-        if(buffer[i] != PROTOCOL_ID[i]){
+        if(networkState->receive_p.PROTOCOL_ID[i] != PROTOCOL_ID[i]){
             //std::cout << "buffer != Protocol_id" << i << std::endl;
             return -1;
         }
     }
 
     //return message type
-    return buffer[PROTOCOL_ID_LEN] - 48;
+    return networkState->receive_p.MSG_TYPE;
 }
 
 /*

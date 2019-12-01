@@ -211,17 +211,13 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                 renderState->clientState = FAILED_TO_CONNECT; 
                 break;
             }
-            //Send Connect Message
-            networkState->start_index_ptr = 0;
-            Engine::package_msg((char *)PROTOCOL_ID, 5, networkState);
-            Engine::package_msg((char *)MSG_CONNECTION_REQUEST, 1, networkState);
 
             //Set Connect Timer
             networkState->connect_timer = time;
 
             //Send Inital message to implicitly bind the socket (sendto)
             std::cout << "Client: Connection Request" << std::endl;
-            if(Engine::udpSend_client(networkState)){
+            if(Engine::udpSend_client(networkState, (char*)&networkState->connect_p, sizeof(Connect_P))){
                 renderState->clientState = FAILED_TO_CONNECT; 
                 break;
             }
@@ -244,21 +240,20 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                 networkState->connect_timer = time;
 
                 std::cout << "Client: Connection Request" << std::endl;
-                if(Engine::udpSend_client(networkState)){
+                if(Engine::udpSend_client(networkState, (char*)&networkState->connect_p, sizeof(Connect_P))){
                     renderState->clientState = FAILED_TO_CONNECT; 
                     break;
                 }
             }
 
-            if(Engine::udpReceive_client(networkState)){
+            if(Engine::udpReceive_client(networkState, (char*)&networkState->receive_p, sizeof(Receive_P))){
                 renderState->clientState = FAILED_TO_CONNECT;
                 break;
             }else{
 
                 //Check if message length is greater than 0
                 if(networkState->recv_msg_len > 0){
-
-                    switch(checkProtocol(networkState->recv_buffer, networkState->recv_msg_len))
+                    switch(checkProtocol(networkState, networkState->recv_msg_len))
                     {
                         case CONNECTION_ACCEPTED:
                         {
@@ -283,19 +278,13 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
         case FAILED_TO_CONNECT:
         {
             std::cout << "FAILED_TO_CONNECT" << std::endl;
-            
             break;
         }
         case CONNECTED:
         {
             //Send Input Packet to server
             getButtonsBitset(windowState, networkState);
-            networkState->start_index_ptr = 0;
-            Engine::package_msg((char *)PROTOCOL_ID, 5, networkState);
-            Engine::package_msg((char *)MSG_INPUT_PACKET, 1, networkState);
-            Engine::package_msg((char *)&networkState->inputcmd.buttons, 1, networkState);
-
-            if(Engine::udpSend_client(networkState)){
+            if(Engine::udpSend_client(networkState, (char*)&networkState->input_p, sizeof(Input_P))){
                 std::cout << "Failed to send input packet" << std::endl;
                 break;
             }
@@ -514,8 +503,8 @@ int Engine::udpConnect(NetworkState* networkState){
 
     return 0;
 }
-int Engine::udpSend_client(NetworkState* networkState){
-    networkState->result = sendto(networkState->server_socket, networkState->send_buffer, networkState->start_index_ptr, 0, (struct sockaddr*) &networkState->server_address, sizeof(networkState->server_address));
+int Engine::udpSend_client(NetworkState* networkState, char* buffer, int size){
+    networkState->result = sendto(networkState->server_socket, buffer, size, 0, (struct sockaddr*) &networkState->server_address, sizeof(networkState->server_address));
     if(networkState->result == SOCKET_ERROR){
         networkState->error = WSAGetLastError();
         std::cout << "Error " << networkState->error << ": failed to send message." << std::endl;
@@ -523,11 +512,11 @@ int Engine::udpSend_client(NetworkState* networkState){
     }
     return 0;
 }
-int Engine::udpReceive_client(NetworkState* networkState){
+int Engine::udpReceive_client(NetworkState* networkState, char* buffer, int size){
 
     networkState->server_address_len = sizeof(networkState->server_address);
 
-    networkState->recv_msg_len = recvfrom(networkState->server_socket, networkState->recv_buffer, MAX_RECV_BUF_SIZE, 0, (struct sockaddr*) &networkState->server_address, &networkState->server_address_len);
+    networkState->recv_msg_len = recvfrom(networkState->server_socket, buffer, size, 0, (struct sockaddr*) &networkState->server_address, &networkState->server_address_len);
     if(networkState->recv_msg_len == SOCKET_ERROR){
         networkState->error = WSAGetLastError();
         if(networkState->error = WSAEWOULDBLOCK){
@@ -574,7 +563,7 @@ void Engine::package_msg(char* msg, int size,NetworkState* networkState){
 
 
 /**************************************** PROTOCOL FUNCTIONS **********************************************/
-int Engine::checkProtocol(char* buffer, int buffer_len){
+char Engine::checkProtocol(NetworkState* networkState, int buffer_len){
 
     //Check buffer length and discard packets that are too small
     if(buffer_len < MINIMUM_PACKET_SIZE){
@@ -584,14 +573,14 @@ int Engine::checkProtocol(char* buffer, int buffer_len){
 
     //Check if protocol ID is equal
     for(int i=0; i < PROTOCOL_ID_LEN; i++){
-        if(buffer[i] != PROTOCOL_ID[i]){
+        if(networkState->receive_p.PROTOCOL_ID[i] != PROTOCOL_ID[i]){
             //std::cout << "buffer != Protocol_id" << i << std::endl;
             return -1;
         }
     }
 
     //return message type
-    return buffer[PROTOCOL_ID_LEN] - 48;
+    return networkState->receive_p.MSG_TYPE;
 }
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ PROTOCOL FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
@@ -630,28 +619,28 @@ void Engine::getButtonsBitset(WindowState* windowState, NetworkState* networkSta
 
     //W
     if(windowState->key_W){
-        networkState->inputcmd.buttons |= 1UL << 3;
+        networkState->input_p.buttons |= 1UL << 3;
     }else{
-        networkState->inputcmd.buttons &= ~(1UL << 3);
+        networkState->input_p.buttons &= ~(1UL << 3);
     }
 
     //A
     if(windowState->key_A){
-        networkState->inputcmd.buttons |= 1UL << 2;
+        networkState->input_p.buttons |= 1UL << 2;
     }else{
-        networkState->inputcmd.buttons &= ~(1UL << 2);
+        networkState->input_p.buttons &= ~(1UL << 2);
     }
     //S
     if(windowState->key_S){
-        networkState->inputcmd.buttons |= 1UL << 1;
+        networkState->input_p.buttons |= 1UL << 1;
     }else{
-        networkState->inputcmd.buttons &= ~(1UL << 1);
+        networkState->input_p.buttons &= ~(1UL << 1);
     }
     //D
     if(windowState->key_D){
-        networkState->inputcmd.buttons |= 1UL;
+        networkState->input_p.buttons |= 1UL;
     }else{
-        networkState->inputcmd.buttons &= ~(1UL);
+        networkState->input_p.buttons &= ~(1UL);
     }
 
 }

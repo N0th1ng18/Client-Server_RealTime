@@ -21,30 +21,51 @@
 #define MAX_SEND_BUF_SIZE 1024
 #define MAX_RECV_BUF_SIZE 1024
 
+#define MAX_CLIENTS 5
+
 //Protocol
 const double CONNECT_RESEND_TIME = 3.0;	//Seconds
 const double CONNECT_TIMOUT = 10.0;	//Seconds
 const int PROTOCOL_ID_LEN = 5;
 const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
-const char MSG_CONNECTION_REQUEST[1] = {'1'};
-const char MSG_INPUT_PACKET[1] = {'4'};
 #define MINIMUM_PACKET_SIZE 6	//Protocol_ID(5) + MessageType(1)
-#define FAILED_PROTOCOL -1
-#define CONNECTION_REQUEST 1
-#define CONNECTION_ACCEPTED 2
-#define CONNECTION_DECLINED 3
-#define GAME_PACKET 5
+#define FAILED_PROTOCOL '0'
+#define CONNECTION_REQUEST '1'
+#define CONNECTION_ACCEPTED '2'
+#define CONNECTION_DECLINED '3'
+#define INPUT_PACKET '4'
+#define GAME_PACKET '5'
+
 
 
 namespace Engine
 {
 
-//Structures
-struct UserInput{
-	//double time; 	//Time Input happend
-	char buttons;	//Byte: ---- WASD
+//Network Message Structures
+struct Connect_P{
+	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+	char MSG_TYPE = '1';
+};
+struct Input_P{
+	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+	char MSG_TYPE = '4';
+	char buttons;//Byte: ---- WASD
+};
+//Receive
+struct Client_MS_P{
+	int client_id;
+	float pos_x;
+	float pos_y;
+	float pox_z;
+};
+struct Receive_P{
+	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+	char MSG_TYPE = '5';
+	int num_clients;
+	Client_MS_P client_p[5];	//Max Clients
 };
 
+//Structures
 struct WindowState{
 	int pos[2] = {0, 0};
 	int width = 800;
@@ -80,7 +101,11 @@ struct NetworkState{
 	//Client
 	bool isConnected = false;
 	double connect_timer;
-	UserInput inputcmd;
+
+	//Packets
+	Connect_P connect_p;
+	Input_P input_p;
+	Receive_P receive_p;
 
 	//Server
 	PCWSTR address;
@@ -119,14 +144,14 @@ void updateViewport(WindowState* windowState);
 //Network Functions
 int udpInit(NetworkState* networkState);
 int udpConnect(NetworkState* networkState);
-int udpSend_client(NetworkState* networkState);
-int udpReceive_client(NetworkState* networkState);
+int udpSend_client(NetworkState* networkState, char* buffer, int size);
+int udpReceive_client(NetworkState* networkState, char* buffer, int size);
 int udpDisconnect(NetworkState* networkState);
 int udpCleanup(NetworkState* networkState);
 void package_msg(char* msg, int size, NetworkState* networkState);
 
 //Protocol Functions
-int checkProtocol(char* buffer, int buffer_len);
+char checkProtocol(NetworkState* networkState, int buffer_len);
 
 //Bitwise Functions
 void getButtonsBitset(WindowState* windowState, NetworkState* networkState);
