@@ -113,9 +113,16 @@ struct Player{
     GLuint texture_index;
     GLuint camera_index;
     //Position
-    glm::vec3 pos;
-    glm::vec3 vel;
-    glm::vec3 acc;
+    float mass = 100.0f;
+	float mov_friction = 15.00f;
+	float mov_acc = 20.0f;
+	float mov_force = 0.0f;
+	float theta = 0.0f;
+	float phi = 0.0f;
+    glm::vec3 pos = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 vel = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 acc = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 netforce = glm::vec3(0.0f, 0.0f, 0.0f);
     //Transforms
     glm::vec3 offset;
     glm::vec3 scale;
@@ -245,6 +252,9 @@ struct RenderState{
     GLuint bound_program_index = MAX_PROGRAMS;
     GLuint bound_vao_index = MAX_VAOS;
     GLuint bound_texture_index = MAX_TEXTURES;
+
+    //Client
+    int client_id;
 
     //Cameras
     int active_camera;

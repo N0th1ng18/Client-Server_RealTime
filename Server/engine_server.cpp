@@ -97,6 +97,7 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                         int client_id = Engine_Server::getAvailSlot(networkState);
                         if(client_id < 0){
                             //Server is full -> send CONNECTION_DECLINED
+                            networkState->connect_response_P.time = time;
                             networkState->connect_response_P.MSG_TYPE = CONNECTION_DECLINED;
                             std::cout << "Sent CONNECTION_DECLINED" << std::endl;
                             if(Engine_Server::udpSend_server(networkState, &networkState->client_address, (char*)&networkState->connect_response_P, sizeof(Connect_Response_P))){
@@ -107,15 +108,14 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                         }
 
                         //Add client to slot
-               
-                // InetPtonW(AF_INET, networkState->address, &networkState->server_address.sin_addr.S_un.S_addr);
-
                         networkState->slot_address[client_id].sin_family = AF_INET;
                         networkState->slot_address[client_id].sin_addr.S_un.S_addr = networkState->client_address.sin_addr.S_un.S_addr;
                         networkState->slot_address[client_id].sin_port = networkState->client_address.sin_port;
                         networkState->is_occupied[client_id] = true;
                         //Slot is available -> send CONNECTION_ACCEPTED
+                        networkState->connect_response_P.time = time;
                         networkState->connect_response_P.MSG_TYPE = CONNECTION_ACCEPTED;
+                        networkState->connect_response_P.client_id = client_id;
                         std::cout << "Sent CONNECTION_ACCEPTED" << std::endl;
                         if(Engine_Server::udpSend_server(networkState, &networkState->client_address, (char*)&networkState->connect_response_P, sizeof(Connect_Response_P))){
                             std::cout << "Error: Failed to send CONNECTION_ACCEPTED." << std::endl;
@@ -149,39 +149,46 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                     case INPUT_PACKET:
                     {
                         //Incoming input packets -> Update MASTER State
-
                         int clientID = getClientID(networkState);
                         if(clientID < 0){   //Sender needs to prove that they are connected
                             //Sender is not connected -> drop packet
                             break;
                         }
-                        //Save Button Key Presses
-                        char keyPresses = networkState->receive_p.buttons;
-                        //W
-                        if(keyPresses & (1UL << 3)){
-                            masterGameState->key_W[clientID] = true;
-                        }else{
-                            masterGameState->key_W[clientID] = false;
+
+                        //Drop Late Packets
+                        if(networkState->receive_p.time >= networkState->cur_client_time[clientID]){
+                            
+                            //Set new time
+                            networkState->cur_client_time[clientID] = networkState->receive_p.time;
+
+                            //Save Button Key Presses
+                            char keyPresses = networkState->receive_p.buttons;
+                            //W
+                            if(keyPresses & (1UL << 3)){
+                                masterGameState->key_W[clientID] = true;
+                            }else{
+                                masterGameState->key_W[clientID] = false;
+                            }
+                            //A
+                            if(keyPresses & (1UL << 2)){
+                                masterGameState->key_A[clientID] = true;
+                            }else{
+                                masterGameState->key_A[clientID] = false;
+                            }
+                            //S
+                            if(keyPresses & (1UL << 1)){
+                                masterGameState->key_S[clientID] = true;
+                            }else{
+                                masterGameState->key_S[clientID] = false;
+                            }
+                            //D
+                            if(keyPresses & (1UL << 0)){
+                                masterGameState->key_D[clientID] = true;
+                            }else{
+                                masterGameState->key_D[clientID] = false;
+                            }
+                            break;
                         }
-                        //A
-                        if(keyPresses & (1UL << 2)){
-                            masterGameState->key_A[clientID] = true;
-                        }else{
-                            masterGameState->key_A[clientID] = false;
-                        }
-                        //S
-                        if(keyPresses & (1UL << 1)){
-                            masterGameState->key_S[clientID] = true;
-                        }else{
-                            masterGameState->key_S[clientID] = false;
-                        }
-                        //D
-                        if(keyPresses & (1UL << 0)){
-                            masterGameState->key_D[clientID] = true;
-                        }else{
-                            masterGameState->key_D[clientID] = false;
-                        }
-                        break;
                     }
                     case FAILED_PROTOCOL:
                     {
@@ -266,15 +273,9 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
 
 
             //Integration
-            player->acc.x = player->netforce.x / player->mass;
-            player->acc.y = player->netforce.y / player->mass;
-            player->acc.z = player->netforce.z / player->mass;
-            player->vel.x = player->vel.x + player->acc.x;
-            player->vel.y = player->vel.y + player->acc.y;
-            player->vel.z = player->vel.z + player->acc.z;
-            player->pos.x = player->pos.x + player->vel.x;
-            player->pos.y = player->pos.y + player->vel.y;
-            player->pos.z = player->pos.z + player->vel.z;
+            player->acc = player->netforce / player->mass;
+            player->vel = player->vel + player->acc;
+            player->pos = player->pos + player->vel;
         }
     }
 
@@ -284,15 +285,20 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
     if(time - networkState->send_timer > MASTERSTATE_RESEND_TIME){
         networkState->send_timer = time;
 
-        networkState->masterstate_p.num_clients = masterGameState->num_players;
+        //Build masterstate_p packet
+        networkState->masterstate_p.time = time;
+        networkState->masterstate_p.num_players = masterGameState->num_players;
+        //Reset masterstate_p
         for(int i=0; i < MAX_CLIENTS; i++){
+            networkState->masterstate_p.client_p[i].isActive = false;
+        }
+        //Go through slotlist to find active players and add them to send through masterstate_p packet
+        for(int i=0, j=0; i < MAX_CLIENTS; i++){
             if(masterGameState->slotlist_players[i]){ //if player is active
-                networkState->masterstate_p.client_p[i].isActive = true;
-                networkState->masterstate_p.client_p[i].pos_x = masterGameState->players[i].pos.x;
-                networkState->masterstate_p.client_p[i].pos_y = masterGameState->players[i].pos.y;
-                networkState->masterstate_p.client_p[i].pos_z = masterGameState->players[i].pos.z;
-            }else{
-                networkState->masterstate_p.client_p[i].isActive = false;
+                networkState->masterstate_p.client_p[j].isActive = true;
+                networkState->masterstate_p.client_p[j].pos = masterGameState->players[i].pos;
+                networkState->masterstate_p.client_p[j].vel = masterGameState->players[i].vel;
+                j++;
             }
         }
 
@@ -301,6 +307,7 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
             if(masterGameState->slotlist_players[i]){ //if player is active
 
                 networkState->masterstate_p.client_id = i;
+                networkState->masterstate_p.last_input_time = networkState->cur_client_time[i];
                 if(Engine_Server::udpSend_server(networkState, &networkState->slot_address[i], (char*)&networkState->masterstate_p, sizeof(MasterState_P))){
                     std::cout << "Error: Failed to send MasterGameState to client at ID: " << i << std::endl;
                 }

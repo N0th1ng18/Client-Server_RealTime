@@ -27,30 +27,37 @@
         *   - Add and Remove Objects, Cameras, etc.                                                         -Done       (Need to remove Texts)
         *   - Distance Field Text                                                                           -Done       (Alignment and Line Length)  
         *   - Make Resources and State seperate from engine                                                 -Done     
-        *   - Scene States                                                          (1 day)                  
-        *   - Buttons                                                               (less than 1 day)
-        *   - First Page - Play Online, Settings, Quit                              (less than 1 day)
-        *   - Play Online - Host Server, Join By Ip, Back                           (less than 1 day)     
-        *   - Settings - Video, Audio, Back                                         (less than 1 day)
-        *   - Quit - Exits                                                          (less than 1 day)
-        *   - Menu Page Loader                                                      (less than 1 day)                   Setup String appender for creating messages
+        *   - Scene States                                                                                  -Not in project scope 
+        *   - Buttons                                                                                       -Not in project scope    
+        *   - First Page - Play Online, Settings, Quit                                                      -Not in project scope
+        *   - Play Online - Host Server, Join By Ip, Back                                                   -Not in project scope 
+        *   - Settings - Video, Audio, Back                                                                 -Not in project scope 
+        *   - Quit - Exits                                                                                  -Not in project scope 
+        *   - Menu Page Loader                                                                              -Not in project scope            
         * Client-Server Setup and test
         *   - Setup Basic Connection                                                                        -Done       (Questions to Answer: Create a timer,threads, How to message ping time)              
-        *   - Setup Ping Delay for testing                                          (1 day)
+        *   - Setup Ping Delay and Random Drop for testing                          (1 day)
         *   - Setup Dumb Client                                                                             -Done       (send timestamp to limit out of order packets)
         *   - Setup Client-Side Prediction                                          (2 day)
         *   - Setup Server Reconciliation                                           (2 day)
         *   - Setup Entity Interpolation                                            (1 day)
         *   - Setup Lag Compensation                                                (2 day)
         * Water/Fluid Dynamics
-        *   - Simulation On Client-Side                                             (tbd)
-        *   - Simulation Over Client-Server                                         (tbd)
-        *   - Simulation with Prediction and Lag Compensation                       (tbd)
+        *   - Simulation On Client-Side                                             (tbd)                   -Not in project scope 
+        *   - Simulation Over Client-Server                                         (tbd)                   -Not in project scope 
+        *   - Simulation with Prediction and Lag Compensation                       (tbd)                   -Not in project scope 
     
         
 
 
 */
+
+//Private Functions
+void resetNetForce(glm::vec3* netforce);
+void addForce2D(glm::vec3* netforce, float force, float theta);
+void addForce3D(glm::vec3* netforce, float force, float theta, float phi);
+void addForceVec(glm::vec3* netforce, float x, float y, float z);
+float degreesToRadians(float degrees);
 
 /***************************************** CLIENT FUNCTIONS *******************************************/
 
@@ -215,6 +222,9 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
             //Set Connect Timer
             networkState->connect_timer = time;
 
+            //Packet Setup
+            networkState->connect_p.time = time;
+
             //Send Inital message to implicitly bind the socket (sendto)
             std::cout << "Client: Connection Request" << std::endl;
             Engine::udpSend_client(networkState, (char*)&networkState->connect_p, sizeof(Connect_P));
@@ -236,6 +246,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
             if(time - networkState->connect_timer > CONNECT_RESEND_TIME){
                 networkState->connect_timer = time;
 
+                networkState->connect_p.time = time;
                 std::cout << "Client: Connection Request" << std::endl;
                 Engine::udpSend_client(networkState, (char*)&networkState->connect_p, sizeof(Connect_P));
             }
@@ -248,6 +259,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                     case CONNECTION_ACCEPTED:
                     {
                         std::cout << "Client: Connection Accepted" << std::endl;
+                        renderState->client_id = networkState->receive_p.client_id;
                         renderState->clientState = CONNECTED;
                         break;
                     }
@@ -275,7 +287,20 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
         {
             //Send Input Packet to server
             getButtonsBitset(windowState, networkState);
+            networkState->input_p.time = time;
             Engine::udpSend_client(networkState, (char*)&networkState->input_p, sizeof(Input_P));
+
+            //Create Move from input packet
+            Move input;
+            input.time = networkState->input_p.time;
+            input.key_W = windowState->key_W;
+            input.key_A = windowState->key_A;
+            input.key_S = windowState->key_S;
+            input.key_D = windowState->key_D;
+            //Predict Input State
+            predictClientState(&input, renderState, networkState);
+            //Add Move to queue
+            networkState->input_queue.enqueue(input);
 
             //Read packets from server and update render state
             Engine::udpReceive_client(networkState, (char*)&networkState->receive_p, sizeof(Receive_P));
@@ -285,60 +310,54 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                 {
                     case GAME_PACKET:
                     {
-                        //Update RenderState
-                        //For Each Player
-                        for(int i=0; i < MAX_CLIENTS; i++){
-                            if(networkState->receive_p.client_p[i].isActive){ //If Client is active
-                                Engine::Client_MS_P* client = &networkState->receive_p.client_p[i];
+                        //Drop late Packets
+                        if(networkState->receive_p.time >= networkState->cur_server_time){
+                            networkState->cur_server_time = networkState->receive_p.time;
+
+                            //Update RenderState
+                            for(int i=0; i < MAX_CLIENTS; i++){
+                                Engine::Client_MS_P* client_s = &networkState->receive_p.client_p[i];
                                 Player* player = &renderState->players[i];
-                                //lookup client_id at index client_id
-                                if(renderState->slotlist_players[i]){
-                                    //Update Player
-                                    player->pos.x = client->pos_x;
-                                    player->pos.y = client->pos_y;
-                                    player->pos.z = client->pos_z;
-                                    //Create Transformation Matrix
-                                    player->transformation = glm::mat4(1.0f);
-                                    player->transformation = glm::scale(player->transformation, player->scale);// Scale
-                                    player->transformation = glm::rotate(player->transformation, player->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
-                                    player->transformation = glm::rotate(player->transformation, player->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
-                                    player->transformation = glm::rotate(player->transformation, player->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
-                                    player->transformation = glm::translate(player->transformation, player->pos);// Translate
+
+                                //Update players
+                                if(networkState->receive_p.client_p[i].isActive){
+                                    //Check if renderstate has this slot active
+                                    if(renderState->slotlist_players[i]){
+                                        //Update Player
+                                        player->pos = client_s->pos;
+                                    }else{
+                                        //Add Player
+                                        Player* newPlayer = addPlayer(renderState);
+                                        newPlayer->program_index = 0;
+                                        newPlayer->vao_index = 0;
+                                        newPlayer->texture_index = 0;
+                                        newPlayer->camera_index = 0;
+                                        newPlayer->offset = glm::vec3(0.0f, 0.0f, 0.0f);
+                                        newPlayer->pos = glm::vec3(client_s->pos.x, client_s->pos.y, client_s->pos.z);
+                                        newPlayer->scale = glm::vec3(20.0f, 20.0f, 1.0f);
+                                        newPlayer->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
+                                    }
                                 }else{
-                                    //Add Player
-                                    Player* newPlayer = addPlayer(renderState);
-                                    newPlayer->program_index = 0;
-                                    newPlayer->vao_index = 0;
-                                    newPlayer->texture_index = 0;
-                                    newPlayer->camera_index = 0;
-                                    newPlayer->offset = glm::vec3(0.0f, 0.0f, 0.0f);
-                                    newPlayer->pos = glm::vec3(client->pos_x, client->pos_y, client->pos_z);
-                                    newPlayer->scale = glm::vec3(10.0f, 10.0f, 1.0f);
-                                    newPlayer->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
-                                    //Create Transformation Matrix
-                                    newPlayer->transformation = glm::mat4(1.0f);
-                                    newPlayer->transformation = glm::scale(newPlayer->transformation, newPlayer->scale);// Scale
-                                    newPlayer->transformation = glm::rotate(newPlayer->transformation, newPlayer->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
-                                    newPlayer->transformation = glm::rotate(newPlayer->transformation, newPlayer->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
-                                    newPlayer->transformation = glm::rotate(newPlayer->transformation, newPlayer->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
-                                    newPlayer->transformation = glm::translate(newPlayer->transformation, newPlayer->pos);// Translate
+                                    if(renderState->slotlist_players[i]){
+                                        //Remove Player
+                                        removePlayer(renderState, i);
+                                    }
                                 }
                             }
-                        }
 
-                        //Debug
-                        std::cout << "-------------Players-------------" << std::endl;
-                        for(int i=0; i < renderState->MAX_PLAYERS; i++){
-                            std::cout << i << ": " << renderState->slotlist_players[i];
-                            if(renderState->slotlist_players[i]){
-                                std::cout << renderState->players[i].pos.x 
-                                << "\t|\t"<< renderState->players[i].pos.y 
-                                << "\t|\t"<< renderState->players[i].pos.z << std::endl;
-                            }else{
-                                std::cout << std::endl;
-                            }
+                            //Debug
+                            // std::cout << "-------------Players-------------" << std::endl;
+                            // for(int i=0; i < renderState->MAX_PLAYERS; i++){
+                            //     std::cout << i << ": " << renderState->slotlist_players[i];
+                            //     if(renderState->slotlist_players[i]){
+                            //         std::cout << renderState->players[i].pos.x 
+                            //         << "\t|\t"<< renderState->players[i].pos.y 
+                            //         << "\t|\t"<< renderState->players[i].pos.z << std::endl;
+                            //     }else{
+                            //         std::cout << std::endl;
+                            //     }
+                            // }
                         }
-
                         break;
                     }
                 }
@@ -393,6 +412,99 @@ void Engine::destroyEngine(WindowState* windowState, RenderResources* renderReso
     //Window Clean Up
     glfwDestroyWindow(windowState->window);
     glfwTerminate();
+}
+
+void Engine::predictClientState(Move* move, RenderState* renderState, NetworkState* networkState){
+
+    //Predict next position of all players (This clients player will get input applied to it)
+    for(int i=0; i < MAX_CLIENTS; i++){
+        if(renderState->slotlist_players[i]){
+            Player* player = &renderState->players[i];
+            if(renderState->client_id == i){
+                //Client Player -> Apply input
+                bool w = move->key_W;
+                bool a = move->key_A;
+                bool s = move->key_S;
+                bool d = move->key_D;
+                //No movement
+                if((!w && !a && !s && !d)               
+                            || (w && !a && s && !d)
+                            || (!w && a && !s && d)
+                            || (w && a && s && d)){
+                        player->mov_force = 0.0f;
+                        //std::cout << "No Movement" << std::endl;
+                //Up
+                }else if((w && !a && !s && !d)
+                            || (w && a && !s && d)){
+                        player->theta = 0.0f;
+                        player->mov_force = player->mov_acc;
+                        //std::cout << "Up" << std::endl;
+                //Left
+                }else if((!w && a && !s && !d)
+                            || (w && a && s && !d)){
+                        player->theta = 270.0f;
+                        player->mov_force = player->mov_acc;
+                        //std::cout << "Left" << std::endl;
+                //Down
+                }else if((!w && !a && s && !d)
+                            || (!w && a && s && d)){
+                        player->theta = 180.0f;
+                        player->mov_force = player->mov_acc;
+                        //std::cout << "Down" << std::endl;
+                //Right
+                }else if((!w && !a && !s && d)
+                            || (w && !a && s && d)){
+                        player->theta = 90.0f;
+                        player->mov_force = player->mov_acc;
+                        //std::cout << "Right" << std::endl;
+                //Up-Right
+                }else if((w && !a && !s && d)){
+                        player->theta = 45.0f;
+                        player->mov_force = player->mov_acc;
+                        //std::cout << "Up-Right" << std::endl;
+                //Up-Left
+                }else if((w && a && !s && !d)){
+                        player->theta = 315.0f;
+                        player->mov_force = player->mov_acc;
+                        //std::cout << "Up-Left" << std::endl;
+                //Bottom-Left
+                }else if((!w && a && s && !d)){
+                        player->theta = 225.0f;
+                        player->mov_force = player->mov_acc;
+                        //std::cout << "Bottom-Left" << std::endl;
+                //Bottom-Right
+                }else if((!w && !a && s && d)){
+                        player->theta = 135.0f;
+                        player->mov_force = player->mov_acc;
+                        //std::cout << "Bottom-Right" << std::endl;
+                }
+            }else{
+                //Other players -> Reset attributes
+                player->mov_force = 0.0f;
+                player->theta = 0.0f;
+            }
+
+            //Step integration
+            //Force
+            resetNetForce(&player->netforce);
+            addForce2D(&player->netforce, player->mov_force, player->theta);
+            addForceVec(&player->netforce, -player->vel.x * player->mov_friction, -player->vel.y * player->mov_friction, -player->vel.z * player->mov_friction);
+
+            //Integration to update RenderState
+            player->acc = player->netforce / player->mass;
+            player->vel = player->vel + player->acc;
+            player->pos = player->pos + player->vel;
+
+            //Save state to move
+            move->players[i].isActive = true;
+            move->players[i].vel = player->vel;
+            move->players[i].pos = player->pos;
+
+        }else{
+            //Save state to move
+            move->players[i].isActive = false;
+        }
+    }
 }
 
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ CLIENT FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
@@ -641,6 +753,7 @@ char Engine::checkProtocol(NetworkState* networkState, int buffer_len){
 
 
 /**************************************** HELPER FUNCTIONS *************************************************/
+
 glm::mat4 FPS_ViewMatrix( glm::vec3 pos, float pitch, float yaw )
 {
     float cosPitch = cos(pitch);
@@ -696,3 +809,39 @@ void Engine::getButtonsBitset(WindowState* windowState, NetworkState* networkSta
 }
 
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ BITWISE FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+
+/**************************************** PRIVATE FUNCTIONS **********************************************/
+ 
+void resetNetForce(glm::vec3* netforce){
+    netforce->x = 0.0f;
+    netforce->y = 0.0f;
+    netforce->z = 0.0f;
+}
+void addForce2D(glm::vec3* netforce, float force, float theta){
+    //Degrees to Radians
+    theta = degreesToRadians(theta);
+
+    netforce->x = netforce->x + (force * sin(theta));
+    netforce->y = netforce->y + (force * cos(theta));
+}
+void addForce3D(glm::vec3* netforce, float force, float theta, float phi){
+    //Degrees to Radians
+    theta = degreesToRadians(theta);
+    phi = degreesToRadians(phi);
+
+    netforce->x = netforce->x + (force * sin(theta) * sin(phi));
+    netforce->y = netforce->y + (force * cos(theta));
+    netforce->z = netforce->z + (force * sin(theta) * cos(phi));
+}
+
+void addForceVec(glm::vec3* netforce, float x, float y, float z){
+
+    netforce->x = netforce->x + x;
+    netforce->y = netforce->y + y;
+    netforce->z = netforce->z + z;
+}
+float degreesToRadians(float degrees){
+    return (degrees  * (float)(PI / 180.0));
+}
+
+/*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ PRIVATE FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/

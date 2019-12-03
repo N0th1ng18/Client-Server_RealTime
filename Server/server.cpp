@@ -19,7 +19,6 @@ int main(){
         To Do:
         1) Go into engine loop and wait for connections. then start game...etc.
     */
-
     std::cout << "--------------Server--------------" << std::endl;
 
     //Structures

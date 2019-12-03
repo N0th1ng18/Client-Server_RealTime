@@ -46,24 +46,28 @@ namespace Engine_Server
 //Send
 struct Connect_Response_P{
 	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+	double time;
 	char MSG_TYPE;
+	int client_id;
 };
 struct Client_MS_P{
-	bool isActive;
-	float pos_x;
-	float pos_y;
-	float pos_z;
+	bool isActive = false;
+	glm::vec3 pos;
+	glm::vec3 vel;
 };
 struct MasterState_P{
 	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+	double time;
 	char MSG_TYPE = '5';
 	int client_id;
-	int num_clients;
+	double last_input_time = 0.0;
+	int num_players;
 	Client_MS_P client_p[MAX_CLIENTS];
 };
 //Receive
 struct Receive_P{
 	char PROTOCOL_ID[5];
+	double time;
 	char MSG_TYPE;
 	char buttons;//Byte: ---- WASD
 };
@@ -92,6 +96,9 @@ struct NetworkState{
 	MasterState_P masterstate_p;
 	Receive_P receive_p;
 
+	//Client Times
+	double cur_client_time[MAX_CLIENTS] = {0.0};
+
 	//Client Connection Slots
 	bool is_occupied[MAX_CLIENTS] = {false};
 	sockaddr_in slot_address[MAX_CLIENTS] = {NULL};
@@ -114,9 +121,7 @@ struct Player{
     glm::vec3 pos = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 vel = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 acc = glm::vec3(0.0f, 0.0f, 0.0f);
-
 	glm::vec3 netforce = glm::vec3(0.0f, 0.0f, 0.0f);
-
 };
 
 struct MasterGameState{

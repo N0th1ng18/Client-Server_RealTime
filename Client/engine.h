@@ -17,6 +17,7 @@
 #include "modelloader.h"
 #include "shaderloader.h"
 #include "fontloader.h"
+#include "input_queue.h"
 
 #define MAX_SEND_BUF_SIZE 1024
 #define MAX_RECV_BUF_SIZE 1024
@@ -37,6 +38,9 @@ const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 #define GAME_PACKET '5'
 
 
+//Math Stuff
+#define PI 3.14159265359
+
 
 namespace Engine
 {
@@ -44,25 +48,28 @@ namespace Engine
 //Network Message Structures
 struct Connect_P{
 	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+	double time;
 	char MSG_TYPE = '1';
 };
 struct Input_P{
 	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+	double time;
 	char MSG_TYPE = '4';
 	char buttons;//Byte: ---- WASD
 };
 //Receive
 struct Client_MS_P{
-	bool isActive;
-	float pos_x;
-	float pos_y;
-	float pos_z;
+	bool isActive = false;;
+	glm::vec3 pos;
+	glm::vec3 vel;
 };
 struct Receive_P{
 	char PROTOCOL_ID[5] = {'T','i','t','a','n'};
+	double time;
 	char MSG_TYPE = '5';
 	int client_id;
-	int num_clients;
+	double last_input_time = 0.0;
+	int num_players;
 	Client_MS_P client_p[MAX_CLIENTS];
 };
 
@@ -108,6 +115,9 @@ struct NetworkState{
 	Input_P input_p;
 	Receive_P receive_p;
 
+	//Input Queue
+	CircularQueue input_queue = CircularQueue(32);
+
 	//Server
 	PCWSTR address;
 	unsigned short server_port;
@@ -116,6 +126,9 @@ struct NetworkState{
 	int server_address_len = sizeof(server_address);
 	sockaddr_in client_address;
 	int client_address_len = sizeof(client_address);
+
+	//Server Time
+	double cur_server_time = 0.0;
 	
 	//Messages
 	int start_index_ptr;					//stores the next open space to write msg && The total size of msg written
@@ -132,6 +145,7 @@ void input(GLFWwindow* window, int key, int scancode, int action, int mods);
 void update(double time, WindowState* windowState, RenderState* renderState, NetworkState* networkState);
 void render(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
 void destroyEngine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
+void predictClientState(Move* move, RenderState* renderState, NetworkState* networkState);
 
 //initEngine Functions
 int createWindow(WindowState* windowState);

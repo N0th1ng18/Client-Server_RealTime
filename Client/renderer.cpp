@@ -27,34 +27,45 @@ void renderPlayers(RenderResources* renderResources, RenderState* renderState){
 
     for(int i=0; i < renderState->num_players; i++){
         if(renderState->slotlist_players[i] == true){
+            Player* player = &renderState->players[i];
 
             //Bind Program (Check if program is already bound)
-            bindProgram(renderState->players[i].program_index, renderResources, renderState);
+            bindProgram(player->program_index, renderResources, renderState);
             //Bind VAO
-            bindVAO(renderState->players[i].vao_index, renderResources, renderState);
+            bindVAO(player->vao_index, renderResources, renderState);
             //Bind Texture
-            bindTexture(renderState->players[i].texture_index, renderResources, renderState);
+            bindTexture(player->texture_index, renderResources, renderState);
+
+
+            //Create Transformation Matrix
+            player->transformation = glm::mat4(1.0f);
+            player->transformation = glm::scale(player->transformation, player->scale);// Scale
+            player->transformation = glm::rotate(player->transformation, player->rotate.x, glm::vec3(1.0f, 0.0f, 0.0f));// Rotate X
+            player->transformation = glm::rotate(player->transformation, player->rotate.y, glm::vec3(0.0f, 1.0f, 0.0f));// Rotate Y  
+            player->transformation = glm::rotate(player->transformation, player->rotate.z, glm::vec3(0.0f, 0.0f, 1.0f));// Rotate Z  
+            player->transformation = glm::translate(player->transformation, player->pos);// Translate
+
             //Uniforms
             glUniformMatrix4fv(glGetUniformLocation(
-                            renderResources->programs[renderState->players[i].program_index].id, 
+                            renderResources->programs[player->program_index].id, 
                             "projection"),
                             1, GL_FALSE, &renderState->cameras[renderState->objects[i].camera_index].projection[0][0]);
             glUniformMatrix4fv(glGetUniformLocation(
-                            renderResources->programs[renderState->players[i].program_index].id, 
+                            renderResources->programs[player->program_index].id, 
                             "view"),
-                            1, GL_FALSE, &renderState->cameras[renderState->players[i].camera_index].view[0][0]);
+                            1, GL_FALSE, &renderState->cameras[player->camera_index].view[0][0]);
             glUniformMatrix4fv(glGetUniformLocation(
-                            renderResources->programs[renderState->players[i].program_index].id, 
+                            renderResources->programs[player->program_index].id, 
                             "translation"),
-                            1, GL_FALSE, &renderState->players[i].transformation[0][0]);
+                            1, GL_FALSE, &player->transformation[0][0]);
             glUniform1i(glGetUniformLocation(
-                            renderResources->textures[renderState->players[i].texture_index], 
+                            renderResources->textures[player->texture_index], 
                             "texture1"), 
                             0); 
             
 
             //Draw
-            glDrawElements(GL_TRIANGLES, renderResources->vaos[renderState->players[i].vao_index].indices_size, GL_UNSIGNED_INT, (void*)0);
+            glDrawElements(GL_TRIANGLES, renderResources->vaos[player->vao_index].indices_size, GL_UNSIGNED_INT, (void*)0);
         }
     }
 }

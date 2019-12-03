@@ -14,6 +14,7 @@ cl %CommonCompilerFlags%^
  ../modelloader.cpp^
  ../fontloader.cpp^
  ../renderer.cpp^
+  ../input_queue.cpp^
  /link %CommonLinkerFlags%
 
 popd
