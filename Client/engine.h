@@ -103,6 +103,11 @@ struct OpenGLState{
 };
 
 struct NetworkState{
+
+	NetworkState(int size){
+		createQueue(&input_queue, size);
+	}
+
 	//Setup
 	int result, error;
 
@@ -116,7 +121,7 @@ struct NetworkState{
 	Receive_P receive_p;
 
 	//Input Queue
-	CircularQueue input_queue = CircularQueue(32);
+	CircularQueue input_queue;
 
 	//Server
 	PCWSTR address;
@@ -145,7 +150,8 @@ void input(GLFWwindow* window, int key, int scancode, int action, int mods);
 void update(double time, WindowState* windowState, RenderState* renderState, NetworkState* networkState);
 void render(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
 void destroyEngine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
-void predictClientState(Move* move, RenderState* renderState, NetworkState* networkState);
+void predictToNextMove(Move** temp1, Move** temp2, RenderState* renderState, NetworkState* networkState);
+void predictToNextMove_Render(Move** temp1, RenderState* renderState, NetworkState* networkState);
 
 //initEngine Functions
 int createWindow(WindowState* windowState);

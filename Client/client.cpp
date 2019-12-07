@@ -18,7 +18,7 @@ int main(){
 	//Structures
 	Engine::WindowState windowState = {};
 	Engine::OpenGLState openGLState = {};
-    Engine::NetworkState networkState = {};
+    Engine::NetworkState networkState = Engine::NetworkState(100);
 	RenderResources renderResources = {}; 
 	RenderState renderState = RenderState(MAX_CAMERAS, MAX_PLAYERS, MAX_OBJECTS, MAX_TEXTS);
 	
@@ -28,6 +28,7 @@ int main(){
 	openGLState.isWireframe = false;
 	openGLState.clear_Color[2] = 1.0f;
     renderState.clientState = CONNECT_TO_SERVER;       //Initial State
+    openGLState.updatesPerSecond = 60.0;
 
     //Network
     networkState.address = L"192.168.1.3";    //Using Ipconfig
@@ -38,8 +39,8 @@ int main(){
 
 	//Load
 	if(loadResources(&renderResources)){return 1;}
-    //loadStates()                                            //!!!!!!!!!!!!!!would set inital state to 0 index (Best way would be to have unloaded and loaded Entities for each scene with active and not-active loaded objects) Input could be overrided or time to define how states change!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	if(addEntities(&windowState, &renderState)){return 1;}    //Convert this to loadStates() ^^^^^^^^
+    //loadStates()                                           
+	if(addEntities(&windowState, &renderState)){return 1;}    
 
 	//Engine Loop
 	Engine::loop(&windowState, &openGLState, &renderResources, &renderState, &networkState);

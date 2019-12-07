@@ -285,22 +285,44 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
         }
         case CONNECTED:
         {
+            //Debug
+            std::cout << "Sending Input Packet: " 
+            << "Input: " << windowState->key_W
+                         << " " << windowState->key_A
+                         << " " << windowState->key_S
+                         << " " << windowState->key_D
+            << std::endl << std::endl;
+
+
             //Send Input Packet to server
             getButtonsBitset(windowState, networkState);
             networkState->input_p.time = time;
             Engine::udpSend_client(networkState, (char*)&networkState->input_p, sizeof(Input_P));
 
+            //Debug
+            std::cout << "Add Packet To Input Queue: " << std::endl;
+
             //Create Move from input packet
-            Move input;
-            input.time = networkState->input_p.time;
-            input.key_W = windowState->key_W;
-            input.key_A = windowState->key_A;
-            input.key_S = windowState->key_S;
-            input.key_D = windowState->key_D;
-            //Predict Input State
-            predictClientState(&input, renderState, networkState);
+            Move* temp1 = NULL;
+            Move* temp2 = NULL;
+            Move temp;
+            temp.time = networkState->input_p.time;
+            temp.key_W = windowState->key_W;
+            temp.key_A = windowState->key_A;
+            temp.key_S = windowState->key_S;
+            temp.key_D = windowState->key_D;
+            for(int i=0; i < MAX_CLIENTS; i++){
+                temp.players[i].isActive = false;
+                temp.players[i].pos = glm::vec3(0.0f, 0.0f, 0.0f);
+                temp.players[i].vel = glm::vec3(0.0f, 0.0f, 0.0f);
+            }
+
             //Add Move to queue
-            networkState->input_queue.enqueue(input);
+            enqueue(&networkState->input_queue, &temp);
+
+            //Debug
+            std::cout << "Receive Packet From Server: " << std::endl;
+            bool skipPredictFinalStep = false;
 
             //Read packets from server and update render state
             Engine::udpReceive_client(networkState, (char*)&networkState->receive_p, sizeof(Receive_P));
@@ -314,30 +336,28 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                         if(networkState->receive_p.time >= networkState->cur_server_time){
                             networkState->cur_server_time = networkState->receive_p.time;
 
-                            //Update RenderState
+                            //Add and Remove Players to and from renderState based on packet
                             for(int i=0; i < MAX_CLIENTS; i++){
-                                Engine::Client_MS_P* client_s = &networkState->receive_p.client_p[i];
-                                Player* player = &renderState->players[i];
-
-                                //Update players
+                                
+                                //Check if active
                                 if(networkState->receive_p.client_p[i].isActive){
-                                    //Check if renderstate has this slot active
-                                    if(renderState->slotlist_players[i]){
-                                        //Update Player
-                                        player->pos = client_s->pos;
-                                    }else{
-                                        //Add Player
+                                    //Active Player
+                                    if(!renderState->slotlist_players[i]){
+                                        //Add Player and update info
                                         Player* newPlayer = addPlayer(renderState);
                                         newPlayer->program_index = 0;
                                         newPlayer->vao_index = 0;
                                         newPlayer->texture_index = 0;
                                         newPlayer->camera_index = 0;
                                         newPlayer->offset = glm::vec3(0.0f, 0.0f, 0.0f);
-                                        newPlayer->pos = glm::vec3(client_s->pos.x, client_s->pos.y, client_s->pos.z);
+                                        newPlayer->pos = glm::vec3(networkState->receive_p.client_p[i].pos.x, networkState->receive_p.client_p[i].pos.y, networkState->receive_p.client_p[i].pos.z);
+                                        newPlayer->vel = glm::vec3(networkState->receive_p.client_p[i].vel.x, networkState->receive_p.client_p[i].vel.y, networkState->receive_p.client_p[i].vel.z);
                                         newPlayer->scale = glm::vec3(20.0f, 20.0f, 1.0f);
                                         newPlayer->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
                                     }
+
                                 }else{
+                                    //Not Active Player
                                     if(renderState->slotlist_players[i]){
                                         //Remove Player
                                         removePlayer(renderState, i);
@@ -345,23 +365,159 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                                 }
                             }
 
+
                             //Debug
-                            // std::cout << "-------------Players-------------" << std::endl;
-                            // for(int i=0; i < renderState->MAX_PLAYERS; i++){
-                            //     std::cout << i << ": " << renderState->slotlist_players[i];
-                            //     if(renderState->slotlist_players[i]){
-                            //         std::cout << renderState->players[i].pos.x 
-                            //         << "\t|\t"<< renderState->players[i].pos.y 
-                            //         << "\t|\t"<< renderState->players[i].pos.z << std::endl;
-                            //     }else{
-                            //         std::cout << std::endl;
-                            //     }
-                            // }
+                            std::cout << "Dequeue Acked inputs with input state time: " << networkState->receive_p.last_input_time << std::endl;
+
+                            //Dequeue Acked inputs
+                            if(networkState->input_queue.count > 1){
+
+                                //get Starting input Move
+                                peek(&networkState->input_queue, &temp1);
+
+                                //Traverse input Queue dequeueing all packets before server's last_input_time
+                                std::cout << "DEBUG-> Count:" 
+                                << networkState->input_queue.count << " | front:"
+                                << networkState->input_queue.front << " | back:"
+                                << networkState->input_queue.back << " | "
+                                << " | " << networkState->receive_p.last_input_time << " > " << temp1->time 
+                                << std::endl;
+
+                                while(networkState->receive_p.last_input_time > temp1->time){
+                                    //remove input move as it has been acked
+                                    dequeue(&networkState->input_queue);
+                                    //get Starting input Move
+                                    peek(&networkState->input_queue, &temp1);
+                                }
+                            }
+
+                            //Debug
+                            std::cout << "Check if server state is different then Move: " << std::endl;
+
+                            //Get Starting input move
+                            peek(&networkState->input_queue, &temp1);
+                            bool isEqual = true;
+                            
+                            //Check if Server Master State is different then temp1.state
+                            for(int i=0; i < MAX_CLIENTS; i++){
+
+                                //Check if Active:  Keep in mind that Server could have added or removed players
+                                if(networkState->receive_p.client_p[i].isActive != temp1->players[i].isActive){
+                                    isEqual = false;
+                                    break;
+                                }
+                                //if Player is active check state of player
+                                if(networkState->receive_p.client_p[i].isActive){
+                                    Client_MS_P* player_server = &networkState->receive_p.client_p[i];
+
+                                    if(player_server->pos != temp1->players[i].pos){
+                                        isEqual = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(isEqual == true){
+                                break; 
+                            }
+
+
+                            //Debug
+                            std::cout << "Set Starting input move to server's masterstate: " << std::endl;
+
+                            //Get Starting input move
+                            peek(&networkState->input_queue, &temp1);
+
+                            //Set Starting move to Server master state
+                            for(int i=0; i < MAX_CLIENTS; i++){
+                                temp1->players[i].isActive = networkState->receive_p.client_p[i].isActive;
+                                temp1->players[i].pos = networkState->receive_p.client_p[i].pos;
+                                temp1->players[i].vel = networkState->receive_p.client_p[i].vel;
+                            }
+
+                            //Debug
+                            // toString(&networkState->input_queue);
+                            // std::cout << std::endl;
+
+                            //Debug
+                            std::cout << "Fix Prediction Differences from Client and Server: " << std::endl;
+
+                            if(networkState->input_queue.count == 1){
+                                //Needs to goto setRenderState
+                                skipPredictFinalStep = true;
+                                break;
+                            }else if(networkState->input_queue.count == 2){
+                                //Nothing to Fix
+                                break;
+                            }else{
+
+                                //Fix by prediction
+                                for(int i=0; i < networkState->input_queue.count - 2; i++){
+                                    peekIndex(&networkState->input_queue, &temp1, i);
+                                    peekIndex(&networkState->input_queue, &temp2, i+1);
+
+                                    predictToNextMove(&temp1, &temp2, renderState, networkState);
+                                }
+                            }
                         }
                         break;
                     }
                 }
+
             }
+
+            //Debug
+            std::cout << "Predict Final Step: " << std::endl;
+
+            //Debug
+            // toString(&networkState->input_queue);
+            // std::cout << std::endl;
+
+            //Predict Final Step
+            if(!skipPredictFinalStep){
+
+                if(networkState->input_queue.count == 1){
+                    //use renderstate as A
+                    peek(&networkState->input_queue, &temp1);
+                    predictToNextMove_Render(&temp1, renderState, networkState);
+                }else{
+                    peekIndex(&networkState->input_queue, &temp1, networkState->input_queue.count - 2);
+                    peekIndex(&networkState->input_queue, &temp2, networkState->input_queue.count - 1);
+                    predictToNextMove(&temp1, &temp2, renderState, networkState);
+                }
+            }
+
+            //Debug
+            // toString(&networkState->input_queue);
+            // std::cout << std::endl;
+
+
+            //Debug
+            std::cout << "Set Render State: " << std::endl;
+
+            //Move at index (count - 1) sets Render State
+            peekIndex(&networkState->input_queue, &temp1, networkState->input_queue.count - 1);
+            for(int i=0; i < MAX_CLIENTS; i++){
+                if(renderState->slotlist_players[i]){
+                    //Update Render State
+                    renderState->players[i].pos = temp1->players[i].pos;
+                    renderState->players[i].vel = temp1->players[i].vel;
+                }
+            }
+
+
+            //Debug
+            std::cout << "-------------RenderState-------------" << std::endl;
+            for(int i=0; i < renderState->MAX_PLAYERS; i++){
+                std::cout << i << ": " << renderState->slotlist_players[i] << " | ";
+                if(renderState->slotlist_players[i]){
+                    std::cout << renderState->players[i].pos.x 
+                    << "\t|\t"<< renderState->players[i].pos.y 
+                    << "\t|\t"<< renderState->players[i].pos.z << std::endl;
+                }else{
+                    std::cout << std::endl;
+                }
+            }
+
 
             //time-out if server hasnt sent update packet after x seconds & Disconnect Packets
 
@@ -370,17 +526,6 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
         }
             
     }
-
-
-
-    //Connect to server (Render Different Scenes menu, connection screen, loading screen, game)
-        // Sample user input (mouse, keyboard, joystick)
-    // Package up and send movement command using simulation time
-    // Read any packets from the server from the network system
-    // Use packets to determine visible objects and their state
-        // Render Scene
-        // Sample clock to find end time
-        // End time minus start time is the simulation time for the next frame
 
 }
 
@@ -414,98 +559,183 @@ void Engine::destroyEngine(WindowState* windowState, RenderResources* renderReso
     glfwTerminate();
 }
 
-void Engine::predictClientState(Move* move, RenderState* renderState, NetworkState* networkState){
-
-    //Predict next position of all players (This clients player will get input applied to it)
+void Engine::predictToNextMove(Move** temp1, Move** temp2, RenderState* renderState, NetworkState* networkState){
     for(int i=0; i < MAX_CLIENTS; i++){
         if(renderState->slotlist_players[i]){
-            Player* player = &renderState->players[i];
+            Player* render_temp = &renderState->players[i]; //Only used for constants
+            //temp1's state + temp2's input = temp2's state
             if(renderState->client_id == i){
                 //Client Player -> Apply input
-                bool w = move->key_W;
-                bool a = move->key_A;
-                bool s = move->key_S;
-                bool d = move->key_D;
+                bool w = (*temp2)->key_W;
+                bool a = (*temp2)->key_A;
+                bool s = (*temp2)->key_S;
+                bool d = (*temp2)->key_D;
                 //No movement
                 if((!w && !a && !s && !d)               
                             || (w && !a && s && !d)
                             || (!w && a && !s && d)
                             || (w && a && s && d)){
-                        player->mov_force = 0.0f;
+                        render_temp->mov_force = 0.0f;
                         //std::cout << "No Movement" << std::endl;
                 //Up
                 }else if((w && !a && !s && !d)
                             || (w && a && !s && d)){
-                        player->theta = 0.0f;
-                        player->mov_force = player->mov_acc;
+                        render_temp->theta = 0.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Up" << std::endl;
                 //Left
                 }else if((!w && a && !s && !d)
                             || (w && a && s && !d)){
-                        player->theta = 270.0f;
-                        player->mov_force = player->mov_acc;
+                        render_temp->theta = 270.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Left" << std::endl;
                 //Down
                 }else if((!w && !a && s && !d)
                             || (!w && a && s && d)){
-                        player->theta = 180.0f;
-                        player->mov_force = player->mov_acc;
+                        render_temp->theta = 180.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Down" << std::endl;
                 //Right
                 }else if((!w && !a && !s && d)
                             || (w && !a && s && d)){
-                        player->theta = 90.0f;
-                        player->mov_force = player->mov_acc;
+                        render_temp->theta = 90.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Right" << std::endl;
                 //Up-Right
                 }else if((w && !a && !s && d)){
-                        player->theta = 45.0f;
-                        player->mov_force = player->mov_acc;
+                        render_temp->theta = 45.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Up-Right" << std::endl;
                 //Up-Left
                 }else if((w && a && !s && !d)){
-                        player->theta = 315.0f;
-                        player->mov_force = player->mov_acc;
+                        render_temp->theta = 315.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Up-Left" << std::endl;
                 //Bottom-Left
                 }else if((!w && a && s && !d)){
-                        player->theta = 225.0f;
-                        player->mov_force = player->mov_acc;
+                        render_temp->theta = 225.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Bottom-Left" << std::endl;
                 //Bottom-Right
                 }else if((!w && !a && s && d)){
-                        player->theta = 135.0f;
-                        player->mov_force = player->mov_acc;
+                        render_temp->theta = 135.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Bottom-Right" << std::endl;
                 }
             }else{
                 //Other players -> Reset attributes
-                player->mov_force = 0.0f;
-                player->theta = 0.0f;
+                render_temp->mov_force = 0.0f;
+                render_temp->theta = 0.0f;
             }
 
             //Step integration
             //Force
-            resetNetForce(&player->netforce);
-            addForce2D(&player->netforce, player->mov_force, player->theta);
-            addForceVec(&player->netforce, -player->vel.x * player->mov_friction, -player->vel.y * player->mov_friction, -player->vel.z * player->mov_friction);
+            resetNetForce(&render_temp->netforce);
+            addForce2D(&render_temp->netforce, render_temp->mov_force, render_temp->theta);
+            addForceVec(&render_temp->netforce, -(*temp1)->players[i].vel.x * render_temp->mov_friction, -(*temp1)->players[i].vel.y * render_temp->mov_friction, -(*temp1)->players[i].vel.z * render_temp->mov_friction);
 
             //Integration to update RenderState
-            player->acc = player->netforce / player->mass;
-            player->vel = player->vel + player->acc;
-            player->pos = player->pos + player->vel;
+            render_temp->acc = render_temp->netforce / render_temp->mass;
+            (*temp2)->players[i].vel = (*temp1)->players[i].vel + render_temp->acc;
+            (*temp2)->players[i].pos = (*temp1)->players[i].pos + (*temp2)->players[i].vel;
 
-            //Save state to move
-            move->players[i].isActive = true;
-            move->players[i].vel = player->vel;
-            move->players[i].pos = player->pos;
-
+            (*temp2)->players[i].isActive = true;
         }else{
-            //Save state to move
-            move->players[i].isActive = false;
+            //Non-Active slot
+            (*temp2)->players[i].isActive = false;
         }
     }
 }
+
+void Engine::predictToNextMove_Render(Move** temp1, RenderState* renderState, NetworkState* networkState){
+    for(int i=0; i < MAX_CLIENTS; i++){
+        if(renderState->slotlist_players[i]){
+            Player* render_temp = &renderState->players[i]; 
+            //RenderState state + temp1's input = temp1's state
+            if(renderState->client_id == i){
+                //Client Player -> Apply input
+                bool w = (*temp1)->key_W;
+                bool a = (*temp1)->key_A;
+                bool s = (*temp1)->key_S;
+                bool d = (*temp1)->key_D;
+                //No movement
+                if((!w && !a && !s && !d)               
+                            || (w && !a && s && !d)
+                            || (!w && a && !s && d)
+                            || (w && a && s && d)){
+                        render_temp->mov_force = 0.0f;
+                        //std::cout << "No Movement" << std::endl;
+                //Up
+                }else if((w && !a && !s && !d)
+                            || (w && a && !s && d)){
+                        render_temp->theta = 0.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
+                        //std::cout << "Up" << std::endl;
+                //Left
+                }else if((!w && a && !s && !d)
+                            || (w && a && s && !d)){
+                        render_temp->theta = 270.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
+                        //std::cout << "Left" << std::endl;
+                //Down
+                }else if((!w && !a && s && !d)
+                            || (!w && a && s && d)){
+                        render_temp->theta = 180.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
+                        //std::cout << "Down" << std::endl;
+                //Right
+                }else if((!w && !a && !s && d)
+                            || (w && !a && s && d)){
+                        render_temp->theta = 90.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
+                        //std::cout << "Right" << std::endl;
+                //Up-Right
+                }else if((w && !a && !s && d)){
+                        render_temp->theta = 45.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
+                        //std::cout << "Up-Right" << std::endl;
+                //Up-Left
+                }else if((w && a && !s && !d)){
+                        render_temp->theta = 315.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
+                        //std::cout << "Up-Left" << std::endl;
+                //Bottom-Left
+                }else if((!w && a && s && !d)){
+                        render_temp->theta = 225.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
+                        //std::cout << "Bottom-Left" << std::endl;
+                //Bottom-Right
+                }else if((!w && !a && s && d)){
+                        render_temp->theta = 135.0f;
+                        render_temp->mov_force = render_temp->mov_acc;
+                        //std::cout << "Bottom-Right" << std::endl;
+                }
+            }else{
+                //Other players -> Reset attributes
+                render_temp->mov_force = 0.0f;
+                render_temp->theta = 0.0f;
+            }
+
+            //Step integration
+            //Force
+            resetNetForce(&render_temp->netforce);
+            addForce2D(&render_temp->netforce, render_temp->mov_force, render_temp->theta);
+            addForceVec(&render_temp->netforce, -render_temp->vel.x * render_temp->mov_friction, -render_temp->vel.y * render_temp->mov_friction, -render_temp->vel.z * render_temp->mov_friction);
+
+            //Integration to update RenderState
+            render_temp->acc = render_temp->netforce / render_temp->mass;
+            (*temp1)->players[i].vel = render_temp->vel + render_temp->acc;
+            (*temp1)->players[i].pos = render_temp->pos + (*temp1)->players[i].vel;
+
+            (*temp1)->players[i].isActive = true;
+        }else{
+            //Non-Active slot
+            (*temp1)->players[i].isActive = false;
+        }
+    }
+}
+
+
 
 /*^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ CLIENT FUNCTIONS ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 

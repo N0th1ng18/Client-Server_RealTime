@@ -11,7 +11,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-//Used due to the lack of rendering the frame causing query performance counter to be called to fast.
 #include <thread>         
 #include <chrono>        
 

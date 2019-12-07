@@ -107,6 +107,8 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
 
                         }
 
+                        //Set new client time
+                        networkState->cur_client_time[client_id] = networkState->receive_p.time;
                         //Add client to slot
                         networkState->slot_address[client_id].sin_family = AF_INET;
                         networkState->slot_address[client_id].sin_addr.S_un.S_addr = networkState->client_address.sin_addr.S_un.S_addr;
@@ -158,7 +160,7 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                         //Drop Late Packets
                         if(networkState->receive_p.time >= networkState->cur_client_time[clientID]){
                             
-                            //Set new time
+                            //Set new client time
                             networkState->cur_client_time[clientID] = networkState->receive_p.time;
 
                             //Save Button Key Presses
@@ -187,6 +189,16 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                             }else{
                                 masterGameState->key_D[clientID] = false;
                             }
+
+                            //Debug
+                            // std::cout << "Received Input Packet\n"
+                            // << "Input: " 
+                            // << masterGameState->key_W[clientID] << " "
+                            // << masterGameState->key_A[clientID] << " "
+                            // << masterGameState->key_S[clientID] << " "
+                            // << masterGameState->key_D[clientID] << " "
+                            // << std::endl << std::endl;
+
                             break;
                         }
                     }
@@ -276,10 +288,17 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
             player->acc = player->netforce / player->mass;
             player->vel = player->vel + player->acc;
             player->pos = player->pos + player->vel;
+
+
+            //Debug
+            // std::cout << "Step Input to masterstate\n"
+            // << "Input: " << w << " " << a << " " << s << " " << d << " "
+            // << "Pos: (" << player->pos.x << " " << player->pos.y <<  " " << player->pos.z << ") "
+            // << std::endl << std::endl;
         }
     }
 
-    //Collisions?
+    //Collisions
 
     //Send game state to all active clients 20 times per second
     if(time - networkState->send_timer > MASTERSTATE_RESEND_TIME){
@@ -308,6 +327,7 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
 
                 networkState->masterstate_p.client_id = i;
                 networkState->masterstate_p.last_input_time = networkState->cur_client_time[i];
+
                 if(Engine_Server::udpSend_server(networkState, &networkState->slot_address[i], (char*)&networkState->masterstate_p, sizeof(MasterState_P))){
                     std::cout << "Error: Failed to send MasterGameState to client at ID: " << i << std::endl;
                 }
