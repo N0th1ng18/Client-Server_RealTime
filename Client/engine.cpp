@@ -122,7 +122,6 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
             time += dt / 1000000.0;
             accumulator -= dt;
         }
-
         //Render
         alpha = accumulator / dt;
         Engine::render(windowState, renderResources, renderState);
@@ -533,12 +532,11 @@ void Engine::render(WindowState* windowState, RenderResources* renderResources, 
 
     updateViewport(windowState);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    
     //render state needs to have a main_menu, settings, join_server, ect. (Maps) -> can be loaded from file.
     renderPlayers(renderResources, renderState);
     renderObjects(renderResources, renderState);
     renderTexts(renderResources, renderState, windowState->width, windowState->height);
-
 
     glfwSwapBuffers(windowState->window);
 }

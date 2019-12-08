@@ -28,14 +28,12 @@ void renderPlayers(RenderResources* renderResources, RenderState* renderState){
     for(int i=0; i < renderState->num_players; i++){
         if(renderState->slotlist_players[i] == true){
             Player* player = &renderState->players[i];
-
             //Bind Program (Check if program is already bound)
             bindProgram(player->program_index, renderResources, renderState);
             //Bind VAO
             bindVAO(player->vao_index, renderResources, renderState);
             //Bind Texture
             bindTexture(player->texture_index, renderResources, renderState);
-
 
             //Create Transformation Matrix
             player->transformation = glm::mat4(1.0f);
@@ -49,7 +47,7 @@ void renderPlayers(RenderResources* renderResources, RenderState* renderState){
             glUniformMatrix4fv(glGetUniformLocation(
                             renderResources->programs[player->program_index].id, 
                             "projection"),
-                            1, GL_FALSE, &renderState->cameras[renderState->objects[i].camera_index].projection[0][0]);
+                            1, GL_FALSE, &renderState->cameras[renderState->players[i].camera_index].projection[0][0]);
             glUniformMatrix4fv(glGetUniformLocation(
                             renderResources->programs[player->program_index].id, 
                             "view"),
@@ -62,8 +60,6 @@ void renderPlayers(RenderResources* renderResources, RenderState* renderState){
                             renderResources->textures[player->texture_index], 
                             "texture1"), 
                             0); 
-            
-
             //Draw
             glDrawElements(GL_TRIANGLES, renderResources->vaos[player->vao_index].indices_size, GL_UNSIGNED_INT, (void*)0);
         }

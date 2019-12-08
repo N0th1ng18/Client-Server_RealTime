@@ -104,9 +104,9 @@ struct OpenGLState{
 
 struct NetworkState{
 
-	NetworkState(int size){
-		createQueue(&input_queue, size);
-	}
+	// NetworkState(int size){
+	// 	createQueue(&input_queue, size);
+	// }
 
 	//Setup
 	int result, error;

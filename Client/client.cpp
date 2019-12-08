@@ -17,8 +17,10 @@ int main(){
 	
 	//Structures
 	Engine::WindowState windowState = {};
+
 	Engine::OpenGLState openGLState = {};
-    Engine::NetworkState networkState = Engine::NetworkState(100);
+    Engine::NetworkState networkState = {};   //We think this over writes memory somehow
+    createQueue(&networkState.input_queue, 64);
 	RenderResources renderResources = {}; 
 	RenderState renderState = RenderState(MAX_CAMERAS, MAX_PLAYERS, MAX_OBJECTS, MAX_TEXTS);
 	
