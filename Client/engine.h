@@ -26,7 +26,8 @@
 
 //Protocol
 const double CONNECT_RESEND_TIME = 3.0;	//Seconds
-const double CONNECT_TIMOUT = 10.0;	//Seconds
+const double CONNECT_TIMEOUT = 10.0;	//Seconds
+const double CONNECTION_TIMEOUT = 5.0f;
 const int PROTOCOL_ID_LEN = 5;
 const char PROTOCOL_ID[5] = {'T','i','t','a','n'};
 #define MINIMUM_PACKET_SIZE 6	//Protocol_ID(5) + MessageType(1)
@@ -115,6 +116,7 @@ struct NetworkState{
 	//Client
 	bool isConnected = false;
 	double connect_timer;
+	double connect_timeout_timer;
 
 	//Packets
 	Connect_P connect_p;

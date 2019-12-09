@@ -252,7 +252,7 @@ void Engine::update(double alpha, double time, WindowState* windowState, RenderS
         {
 
             //Check connection timout
-            if(time - networkState->connect_timer > CONNECT_TIMOUT){
+            if(time - networkState->connect_timer > CONNECT_TIMEOUT){
                 renderState->clientState = FAILED_TO_CONNECT;
                 break;
             }
@@ -275,6 +275,8 @@ void Engine::update(double alpha, double time, WindowState* windowState, RenderS
                     {
                         std::cout << "Client: Connection Accepted: " << networkState->receive_p.client_id << std::endl;
                         renderState->client_id = networkState->receive_p.client_id;
+                        //Reset Timeout Timer
+                        networkState->connect_timeout_timer = time;
                         renderState->clientState = CONNECTED;
                         break;
                     }
@@ -350,6 +352,9 @@ void Engine::update(double alpha, double time, WindowState* windowState, RenderS
                         //Drop late Packets
                         if(networkState->receive_p.time >= networkState->cur_server_time){
                             networkState->cur_server_time = networkState->receive_p.time;
+
+                            //Reset Timeout Timer
+                            networkState->connect_timeout_timer = time;
 
                             //Add and Remove Players to and from renderState based on packet
                             for(int i=0; i < MAX_CLIENTS; i++){
@@ -570,6 +575,13 @@ void Engine::update(double alpha, double time, WindowState* windowState, RenderS
             }
 
 
+            //time-out if server hasnt sent update packet after x seconds or Disconnect Packets
+            //Check connection timout
+            if(time - networkState->connect_timeout_timer > CONNECTION_TIMEOUT){
+                renderState->clientState = FAILED_TO_CONNECT;
+                break;
+            }
+
             //Debug
             // std::cout << "-------------RenderState-------------" << std::endl;
             // for(int i=0; i < renderState->MAX_PLAYERS; i++){
@@ -583,7 +595,7 @@ void Engine::update(double alpha, double time, WindowState* windowState, RenderS
             // }
 
 
-            //time-out if server hasnt sent update packet after x seconds & Disconnect Packets
+
 
             //std::cout << "CONNECTED" << std::endl;
             break;

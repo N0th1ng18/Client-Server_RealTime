@@ -32,8 +32,8 @@ int main(){
     openGLState.updatesPerSecond = 60.0;
 
     //Network
-    networkState.address = L"192.168.1.3";    //Using Ipconfig
-    //networkState.address = L"99.96.65.55";
+    //networkState.address = L"192.168.1.3";    //Using Ipconfig
+    networkState.address = L"99.96.65.55";
     networkState.server_port = 8081;
 
 	//Engine

@@ -105,8 +105,9 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                                 break;
                             }
 
-                        }
-
+                        }                        
+                        //Reset Timeout Timer
+                        networkState->connect_timeout_timer[client_id] = time;
                         //Set new client time
                         networkState->cur_client_time[client_id] = networkState->receive_p.time;
                         //Add client to slot
@@ -159,6 +160,8 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
 
                         //Drop Late Packets
                         if(networkState->receive_p.time >= networkState->cur_client_time[clientID]){
+                            //Reset Timeout Timer
+                            networkState->connect_timeout_timer[clientID] = time;
                             
                             //Set new client time
                             networkState->cur_client_time[clientID] = networkState->receive_p.time;
@@ -339,6 +342,23 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
     }
 
     //Client Timeout & Disconnect Packets
+    for(int i=0; i < MAX_CLIENTS; i++){
+        if(masterGameState->slotlist_players[i]){
+            if(time - networkState->connect_timeout_timer[i] > CONNECTION_TIMEOUT){
+                removePlayer(masterGameState, i);
+                networkState->is_occupied[i] = false;
+                std::cout << "---------------Slots---------------" << std::endl;
+                for(int i=0; i < MAX_CLIENTS; i++){
+                    std::cout << i << "\t";
+                    if(networkState->is_occupied[i]){
+                        std::cout << "\t" << networkState->slot_address[i].sin_addr.S_un.S_addr << ":" << networkState->slot_address[i].sin_port;
+                    }
+                    std::cout << std::endl;
+                }
+                std::cout << "---------------Slots---------------" << std::endl << std::endl;
+            }
+        }
+    }
 
     return 0;
 }
