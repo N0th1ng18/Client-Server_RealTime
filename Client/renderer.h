@@ -13,7 +13,7 @@
 
 
 //Resources (do dynamically allocated like render state)
-#define MAX_TEXTURES 2
+#define MAX_TEXTURES 4
 #define MAX_MODELS 2
 #define MAX_VAOS 2
 #define MAX_VBOS 1
@@ -113,12 +113,13 @@ struct Player{
     GLuint texture_index;
     GLuint camera_index;
     //Position
+    glm::vec3 prev_pos = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 pos = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 vel = glm::vec3(0.0f, 0.0f, 0.0f);
     //Constants for Position
     float mass = 100.0f;
 	float mov_friction = 15.00f;
-	float mov_acc = 20.0f;
+	float mov_acc = 10.0f;
     //Reset each update
 	glm::vec3 netforce = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 acc = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -133,6 +134,9 @@ struct Player{
     //Matrix
     glm::mat4 transformation = glm::mat4(1.0f);
     //...
+
+    //Debug
+    bool player_object = false;
 };
 
 struct Object{
@@ -283,6 +287,9 @@ struct RenderState{
     bool* slotlist_texts;
     int num_texts = 0;
     Text* texts;
+
+    //Debug
+    bool player_debug = false;
     
 };
 
@@ -309,7 +316,7 @@ void removeObject(RenderState* renderState, int id);
 void removeText(RenderState* renderState, int id);
 
 //Render Functions
-void renderPlayers(RenderResources* renderResources, RenderState* renderState);
+void renderPlayers(double alpha, double time, RenderResources* renderResources, RenderState* renderState);
 void renderObjects(RenderResources* renderResources, RenderState* renderState);
 void renderTexts(RenderResources* renderResources, RenderState* renderState, int screen_width, int screen_height); //renderState, Font, Color, Pos, Size, Orientation
 

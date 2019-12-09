@@ -35,20 +35,12 @@
         *   - Quit - Exits                                                                                  -Not in project scope 
         *   - Menu Page Loader                                                                              -Not in project scope            
         * Client-Server Setup and test
-        *   - Setup Basic Connection                                                                        -Done       (Questions to Answer: Create a timer,threads, How to message ping time)              
-        *   - Setup Ping Delay and Random Drop for testing                          (1 day)
-        *   - Setup Dumb Client                                                                             -Done       (send timestamp to limit out of order packets)
-        *   - Setup Client-Side Prediction                                          (2 day)
-        *   - Setup Server Reconciliation                                           (2 day)
+        *   - Setup Basic Connection                                                                        -Done                   
+        *   - Setup Dumb Client                                                                             -Done       
+        *   - Setup Client-Side Prediction                                                                  -Done
+        *   - Setup Server Reconciliation                                                                   -Done
         *   - Setup Entity Interpolation                                            (1 day)
-        *   - Setup Lag Compensation                                                (2 day)
-        * Water/Fluid Dynamics
-        *   - Simulation On Client-Side                                             (tbd)                   -Not in project scope 
-        *   - Simulation Over Client-Server                                         (tbd)                   -Not in project scope 
-        *   - Simulation with Prediction and Lag Compensation                       (tbd)                   -Not in project scope 
-    
-        
-
+        *   - Setup Lag Compensation                                                
 
 */
 
@@ -61,7 +53,7 @@ float degreesToRadians(float degrees);
 
 /***************************************** CLIENT FUNCTIONS *******************************************/
 
-int Engine::initEngine(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState){
+int Engine::initEngine(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState, NetworkState* networkState){
 
     //Initialize and load all states
 	if (!glfwInit()){std::cout << "Failed to initialize GLFW\n"; return 1;}
@@ -71,6 +63,7 @@ int Engine::initEngine(WindowState* windowState, OpenGLState* openGLState, Rende
 	glewExperimental = true;
 	if (glewInit() != GLEW_OK) {std::cout << "Failed to initialize GLEW\n"; return 1;}
     loadOpenGLState(openGLState);
+    createQueue(&networkState->input_queue, networkState->input_queue_size);
 
     return 0;
 }
@@ -116,7 +109,7 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
 
         while(accumulator >= dt){
             //Update
-            Engine::update(time, windowState, renderState, networkState);
+            Engine::update(alpha, time, windowState, renderState, networkState);
             updateCounter++;
 
             time += dt / 1000000.0;
@@ -124,16 +117,26 @@ void Engine::loop(WindowState* windowState, OpenGLState* openGLState, RenderReso
         }
         //Render
         alpha = accumulator / dt;
-        Engine::render(windowState, renderResources, renderState);
+        Engine::render(alpha, time, windowState, renderResources, renderState);
         renderCounter++;
 
         //FPS
         QueryPerformanceCounter(&fpsEndTime);
         if((((fpsEndTime.QuadPart - fpsStartTime.QuadPart) * 1000000LL) / frequency.QuadPart) >= 1000000LL){
             QueryPerformanceCounter(&fpsStartTime);
-            std::cout << "FPS:\t" << renderCounter << "\tUPS:\t" << updateCounter << "\tTime:\t" << time << "\n";
+            std::cout << "FPS:\t" << renderCounter << "\tUPS:\t" << updateCounter << "\tTime:\t" << time << "\tInput_Queue:\t" << networkState->input_queue.count << "\n";
             updateCounter = 0;
             renderCounter = 0;
+        }
+
+        //Exit
+        if(windowState->key_Escape){
+            openGLState->isRunning = false;
+        }
+        if(windowState->key_F1){
+            renderState->player_debug = true;
+        }else{
+            renderState->player_debug = false;   
         }
 
     }
@@ -186,9 +189,22 @@ void Engine::input(GLFWwindow* window, int key, int scancode, int action, int mo
         case GLFW_KEY_ESCAPE:
         {
             if(action == GLFW_PRESS){
-                windowState->key_Escape = true;
-            }else if(action == GLFW_RELEASE){
-                windowState->key_Escape = false;
+                if(!windowState->key_Escape){
+                    windowState->key_Escape = true;
+                }else{
+                    windowState->key_Escape = false;
+                }
+            }
+            break;
+        }
+        case GLFW_KEY_F1:
+        {
+            if(action == GLFW_PRESS){
+                if(!windowState->key_F1){
+                    windowState->key_F1 = true;
+                }else{
+                    windowState->key_F1 = false;
+                }
             }
             break;
         }
@@ -202,7 +218,7 @@ void Engine::input(GLFWwindow* window, int key, int scancode, int action, int mo
 
 }
 
-void Engine::update(double time, WindowState* windowState, RenderState* renderState, NetworkState* networkState){
+void Engine::update(double alpha, double time, WindowState* windowState, RenderState* renderState, NetworkState* networkState){
 
     switch(renderState->clientState){
         case CONNECT_TO_SERVER:
@@ -257,7 +273,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                 {
                     case CONNECTION_ACCEPTED:
                     {
-                        std::cout << "Client: Connection Accepted" << std::endl;
+                        std::cout << "Client: Connection Accepted: " << networkState->receive_p.client_id << std::endl;
                         renderState->client_id = networkState->receive_p.client_id;
                         renderState->clientState = CONNECTED;
                         break;
@@ -285,12 +301,12 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
         case CONNECTED:
         {
             //Debug
-            std::cout << "Sending Input Packet: " 
-            << "Input: " << windowState->key_W
-                         << " " << windowState->key_A
-                         << " " << windowState->key_S
-                         << " " << windowState->key_D
-            << std::endl << std::endl;
+            // std::cout << "Sending Input Packet: " 
+            // << "Input: " << windowState->key_W
+            //              << " " << windowState->key_A
+            //              << " " << windowState->key_S
+            //              << " " << windowState->key_D
+            // << std::endl << std::endl;
 
 
             //Send Input Packet to server
@@ -299,7 +315,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
             Engine::udpSend_client(networkState, (char*)&networkState->input_p, sizeof(Input_P));
 
             //Debug
-            std::cout << "Add Packet To Input Queue: " << std::endl;
+            // std::cout << "Add Packet To Input Queue: " << std::endl;
 
             //Create Move from input packet
             Move* temp1 = NULL;
@@ -320,7 +336,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
             enqueue(&networkState->input_queue, &temp);
 
             //Debug
-            std::cout << "Receive Packet From Server: " << std::endl;
+            // std::cout << "Receive Packet From Server: " << std::endl;
             bool skipPredictFinalStep = false;
 
             //Read packets from server and update render state
@@ -351,8 +367,33 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                                         newPlayer->offset = glm::vec3(0.0f, 0.0f, 0.0f);
                                         newPlayer->pos = glm::vec3(networkState->receive_p.client_p[i].pos.x, networkState->receive_p.client_p[i].pos.y, networkState->receive_p.client_p[i].pos.z);
                                         newPlayer->vel = glm::vec3(networkState->receive_p.client_p[i].vel.x, networkState->receive_p.client_p[i].vel.y, networkState->receive_p.client_p[i].vel.z);
-                                        newPlayer->scale = glm::vec3(20.0f, 20.0f, 1.0f);
+                                        newPlayer->scale = glm::vec3(50.0f, 50.0f, 1.0f);
                                         newPlayer->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
+
+
+                                    }
+
+                                    //Debug
+                                    if(renderState->player_debug){
+                                        if(!renderState->players[i].player_object){
+                                            //Debug Player Object
+                                            Object* object = addObject(renderState);
+                                            object->program_index = 0;
+                                            object->vao_index = 0;
+                                            object->texture_index = 1;
+                                            object->camera_index = 0;
+                                            object->offset = glm::vec3(0.0f, 0.0f, 0.0f);
+                                            object->pos = glm::vec3(networkState->receive_p.client_p[i].pos.x, networkState->receive_p.client_p[i].pos.y, networkState->receive_p.client_p[i].pos.z);
+                                            object->vel = glm::vec3(networkState->receive_p.client_p[i].vel.x, networkState->receive_p.client_p[i].vel.y, networkState->receive_p.client_p[i].vel.z);
+                                            object->scale = glm::vec3(50.0f, 50.0f, 1.0f);
+                                            object->rotate = glm::vec3(glm::radians(0.0f), glm::radians(0.0f), glm::radians(0.0f));
+                                            renderState->players[i].player_object = true;
+                                        }
+                                    }else{
+                                        if(renderState->players[i].player_object){
+                                            removeObject(renderState, i);
+                                            renderState->players[i].player_object = false;
+                                        }
                                     }
 
                                 }else{
@@ -361,12 +402,18 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                                         //Remove Player
                                         removePlayer(renderState, i);
                                     }
+
+                                    //Debug
+                                    if(renderState->player_debug && renderState->players[i].player_object == true){
+                                            removeObject(renderState, i);
+                                            renderState->players[i].player_object = false;
+                                    }
                                 }
                             }
 
 
                             //Debug
-                            std::cout << "Dequeue Acked inputs with input state time: " << networkState->receive_p.last_input_time << std::endl;
+                            // std::cout << "Dequeue Acked inputs with input state time: " << networkState->receive_p.last_input_time << std::endl;
 
                             //Dequeue Acked inputs
                             if(networkState->input_queue.count > 1){
@@ -375,12 +422,12 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                                 peek(&networkState->input_queue, &temp1);
 
                                 //Traverse input Queue dequeueing all packets before server's last_input_time
-                                std::cout << "DEBUG-> Count:" 
-                                << networkState->input_queue.count << " | front:"
-                                << networkState->input_queue.front << " | back:"
-                                << networkState->input_queue.back << " | "
-                                << " | " << networkState->receive_p.last_input_time << " > " << temp1->time 
-                                << std::endl;
+                                // std::cout << "DEBUG-> Count:" 
+                                // << networkState->input_queue.count << " | front:"
+                                // << networkState->input_queue.front << " | back:"
+                                // << networkState->input_queue.back << " | "
+                                // << " | " << networkState->receive_p.last_input_time << " > " << temp1->time 
+                                // << std::endl;
 
                                 while(networkState->receive_p.last_input_time > temp1->time){
                                     //remove input move as it has been acked
@@ -391,7 +438,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                             }
 
                             //Debug
-                            std::cout << "Check if server state is different then Move: " << std::endl;
+                            // std::cout << "Check if server state is different then Move: " << std::endl;
 
                             //Get Starting input move
                             peek(&networkState->input_queue, &temp1);
@@ -421,7 +468,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
 
 
                             //Debug
-                            std::cout << "Set Starting input move to server's masterstate: " << std::endl;
+                            // std::cout << "Set Starting input move to server's masterstate: " << std::endl;
 
                             //Get Starting input move
                             peek(&networkState->input_queue, &temp1);
@@ -438,7 +485,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
                             // std::cout << std::endl;
 
                             //Debug
-                            std::cout << "Fix Prediction Differences from Client and Server: " << std::endl;
+                            // std::cout << "Fix Prediction Differences from Client and Server: " << std::endl;
 
                             if(networkState->input_queue.count == 1){
                                 //Needs to goto setRenderState
@@ -465,7 +512,7 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
             }
 
             //Debug
-            std::cout << "Predict Final Step: " << std::endl;
+            // std::cout << "Predict Final Step: " << std::endl;
 
             //Debug
             // toString(&networkState->input_queue);
@@ -491,31 +538,49 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
 
 
             //Debug
-            std::cout << "Set Render State: " << std::endl;
+            // std::cout << "Set Render State: " << std::endl;
 
             //Move at index (count - 1) sets Render State
             peekIndex(&networkState->input_queue, &temp1, networkState->input_queue.count - 1);
             for(int i=0; i < MAX_CLIENTS; i++){
                 if(renderState->slotlist_players[i]){
                     //Update Render State
-                    renderState->players[i].pos = temp1->players[i].pos;
-                    renderState->players[i].vel = temp1->players[i].vel;
+
+                    if(renderState->client_id == i){
+                        //Client's Player
+                        glm::vec3 difference =  renderState->players[i].pos - renderState->players[i].prev_pos;
+                        renderState->players[i].prev_pos = renderState->players[i].prev_pos + difference * (float)alpha;
+
+                        renderState->players[i].pos = temp1->players[i].pos;
+                        renderState->players[i].vel = temp1->players[i].vel;
+                    }else{
+                        //Other Players
+                        renderState->players[i].prev_pos = renderState->players[i].pos;
+
+                        renderState->players[i].pos = networkState->receive_p.client_p[i].pos;
+                        renderState->players[i].vel = networkState->receive_p.client_p[i].vel;
+                    }
+                    
+                    if(renderState->player_debug && renderState->players[i].player_object == true){
+                        //Debug Player
+                        renderState->objects[i].pos = networkState->receive_p.client_p[i].pos;
+                    }
+
                 }
             }
 
 
             //Debug
-            std::cout << "-------------RenderState-------------" << std::endl;
-            for(int i=0; i < renderState->MAX_PLAYERS; i++){
-                std::cout << i << ": " << renderState->slotlist_players[i] << " | ";
-                if(renderState->slotlist_players[i]){
-                    std::cout << renderState->players[i].pos.x 
-                    << "\t|\t"<< renderState->players[i].pos.y 
-                    << "\t|\t"<< renderState->players[i].pos.z << std::endl;
-                }else{
-                    std::cout << std::endl;
-                }
-            }
+            // std::cout << "-------------RenderState-------------" << std::endl;
+            // for(int i=0; i < renderState->MAX_PLAYERS; i++){
+            //     std::cout << i << ": " << renderState->slotlist_players[i] << " | ";
+            //     if(renderState->slotlist_players[i]){
+            //         std::cout << "ID: " << renderState->client_id
+            //         << "\t|\t" << renderState->players[i].pos.x 
+            //         << "\t|\t"<< renderState->players[i].pos.y 
+            //         << "\t|\t"<< renderState->players[i].pos.z << std::endl;
+            //     }
+            // }
 
 
             //time-out if server hasnt sent update packet after x seconds & Disconnect Packets
@@ -528,20 +593,20 @@ void Engine::update(double time, WindowState* windowState, RenderState* renderSt
 
 }
 
-void Engine::render(WindowState* windowState, RenderResources* renderResources, RenderState* renderState){
+void Engine::render(double alpha, double  time, WindowState* windowState, RenderResources* renderResources, RenderState* renderState){
 
     updateViewport(windowState);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     //render state needs to have a main_menu, settings, join_server, ect. (Maps) -> can be loaded from file.
-    renderPlayers(renderResources, renderState);
+    renderPlayers(alpha, time, renderResources, renderState);
     renderObjects(renderResources, renderState);
     renderTexts(renderResources, renderState, windowState->width, windowState->height);
 
     glfwSwapBuffers(windowState->window);
 }
 
-void Engine::destroyEngine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState){
+void Engine::destroyEngine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState, NetworkState* networkState){
 
     destroyRenderState(renderState);
     //Do RenderResources Next
@@ -552,6 +617,10 @@ void Engine::destroyEngine(WindowState* windowState, RenderResources* renderReso
         deleteFontFile(&(renderResources->fontFiles[i]));
     }
     renderResources->num_fontFiles = 0;
+    //NetworkState
+    deleteQueue(&networkState->input_queue);
+    udpDisconnect(networkState);
+    udpCleanup(networkState);
     //Window Clean Up
     glfwDestroyWindow(windowState->window);
     glfwTerminate();
@@ -563,7 +632,7 @@ void Engine::predictToNextMove(Move** temp1, Move** temp2, RenderState* renderSt
             Player* render_temp = &renderState->players[i]; //Only used for constants
             //temp1's state + temp2's input = temp2's state
             if(renderState->client_id == i){
-                //Client Player -> Apply input
+                //Only predict for Client Player -> Apply input
                 bool w = (*temp2)->key_W;
                 bool a = (*temp2)->key_A;
                 bool s = (*temp2)->key_S;
@@ -620,23 +689,19 @@ void Engine::predictToNextMove(Move** temp1, Move** temp2, RenderState* renderSt
                         render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Bottom-Right" << std::endl;
                 }
-            }else{
-                //Other players -> Reset attributes
-                render_temp->mov_force = 0.0f;
-                render_temp->theta = 0.0f;
+
+                //Step integration
+                //Force
+                resetNetForce(&render_temp->netforce);
+                addForce2D(&render_temp->netforce, render_temp->mov_force, render_temp->theta);
+                addForceVec(&render_temp->netforce, -(*temp1)->players[i].vel.x * render_temp->mov_friction, -(*temp1)->players[i].vel.y * render_temp->mov_friction, -(*temp1)->players[i].vel.z * render_temp->mov_friction);
+
+                //Integration to update RenderState
+                render_temp->acc = render_temp->netforce / render_temp->mass;
+                (*temp2)->players[i].vel = (*temp1)->players[i].vel + render_temp->acc;
+                (*temp2)->players[i].pos = (*temp1)->players[i].pos + (*temp2)->players[i].vel;
+
             }
-
-            //Step integration
-            //Force
-            resetNetForce(&render_temp->netforce);
-            addForce2D(&render_temp->netforce, render_temp->mov_force, render_temp->theta);
-            addForceVec(&render_temp->netforce, -(*temp1)->players[i].vel.x * render_temp->mov_friction, -(*temp1)->players[i].vel.y * render_temp->mov_friction, -(*temp1)->players[i].vel.z * render_temp->mov_friction);
-
-            //Integration to update RenderState
-            render_temp->acc = render_temp->netforce / render_temp->mass;
-            (*temp2)->players[i].vel = (*temp1)->players[i].vel + render_temp->acc;
-            (*temp2)->players[i].pos = (*temp1)->players[i].pos + (*temp2)->players[i].vel;
-
             (*temp2)->players[i].isActive = true;
         }else{
             //Non-Active slot
@@ -651,7 +716,7 @@ void Engine::predictToNextMove_Render(Move** temp1, RenderState* renderState, Ne
             Player* render_temp = &renderState->players[i]; 
             //RenderState state + temp1's input = temp1's state
             if(renderState->client_id == i){
-                //Client Player -> Apply input
+                //Only predict for client Player -> Apply input
                 bool w = (*temp1)->key_W;
                 bool a = (*temp1)->key_A;
                 bool s = (*temp1)->key_S;
@@ -708,23 +773,19 @@ void Engine::predictToNextMove_Render(Move** temp1, RenderState* renderState, Ne
                         render_temp->mov_force = render_temp->mov_acc;
                         //std::cout << "Bottom-Right" << std::endl;
                 }
-            }else{
-                //Other players -> Reset attributes
-                render_temp->mov_force = 0.0f;
-                render_temp->theta = 0.0f;
+
+                //Step integration
+                //Force
+                resetNetForce(&render_temp->netforce);
+                addForce2D(&render_temp->netforce, render_temp->mov_force, render_temp->theta);
+                addForceVec(&render_temp->netforce, -render_temp->vel.x * render_temp->mov_friction, -render_temp->vel.y * render_temp->mov_friction, -render_temp->vel.z * render_temp->mov_friction);
+
+                //Integration to update RenderState
+                render_temp->acc = render_temp->netforce / render_temp->mass;
+                (*temp1)->players[i].vel = render_temp->vel + render_temp->acc;
+                (*temp1)->players[i].pos = render_temp->pos + (*temp1)->players[i].vel;
+
             }
-
-            //Step integration
-            //Force
-            resetNetForce(&render_temp->netforce);
-            addForce2D(&render_temp->netforce, render_temp->mov_force, render_temp->theta);
-            addForceVec(&render_temp->netforce, -render_temp->vel.x * render_temp->mov_friction, -render_temp->vel.y * render_temp->mov_friction, -render_temp->vel.z * render_temp->mov_friction);
-
-            //Integration to update RenderState
-            render_temp->acc = render_temp->netforce / render_temp->mass;
-            (*temp1)->players[i].vel = render_temp->vel + render_temp->acc;
-            (*temp1)->players[i].pos = render_temp->pos + (*temp1)->players[i].vel;
-
             (*temp1)->players[i].isActive = true;
         }else{
             //Non-Active slot

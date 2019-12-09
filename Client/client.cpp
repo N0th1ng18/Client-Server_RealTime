@@ -19,8 +19,7 @@ int main(){
 	Engine::WindowState windowState = {};
 
 	Engine::OpenGLState openGLState = {};
-    Engine::NetworkState networkState = {};   //We think this over writes memory somehow
-    createQueue(&networkState.input_queue, 64);
+    Engine::NetworkState networkState = {};
 	RenderResources renderResources = {}; 
 	RenderState renderState = RenderState(MAX_CAMERAS, MAX_PLAYERS, MAX_OBJECTS, MAX_TEXTS);
 	
@@ -28,16 +27,17 @@ int main(){
 	windowState.isFullscreen = false;
 	openGLState.isCulling = true;
 	openGLState.isWireframe = false;
-	openGLState.clear_Color[2] = 1.0f;
+	//openGLState.clear_Color[2] = 1.0f;
     renderState.clientState = CONNECT_TO_SERVER;       //Initial State
     openGLState.updatesPerSecond = 60.0;
 
     //Network
     networkState.address = L"192.168.1.3";    //Using Ipconfig
+    //networkState.address = L"99.96.65.55";
     networkState.server_port = 8081;
 
 	//Engine
-	if(Engine::initEngine(&windowState, &openGLState, &renderResources, &renderState)){return 1;};
+	if(Engine::initEngine(&windowState, &openGLState, &renderResources, &renderState, &networkState)){return 1;};
 
 	//Load
 	if(loadResources(&renderResources)){return 1;}
@@ -47,7 +47,7 @@ int main(){
 	//Engine Loop
 	Engine::loop(&windowState, &openGLState, &renderResources, &renderState, &networkState);
 	//Engine CleanUp
-	Engine::destroyEngine(&windowState, &renderResources, &renderState);
+	Engine::destroyEngine(&windowState, &renderResources, &renderState, & networkState);
 
     return 0;
 }
@@ -55,11 +55,19 @@ int main(){
 int loadResources(RenderResources* renderResources){
 
 	//Load Textures
-	if(loadTexture("Textures\\Test\\water.jpg", renderResources)){
+    if(loadTexture("Textures\\Test\\star.png", renderResources)){
+        std::cout << "Failed to load Texture." << std::endl;
+        return 1;
+    }
+    if(loadTexture("Textures\\Test\\star2.png", renderResources)){
         std::cout << "Failed to load Texture." << std::endl;
         return 1;
     }
 	if(loadTexture("Textures\\Fonts\\Candara.png", renderResources)){
+        std::cout << "Failed to load Texture." << std::endl;
+        return 1;
+    }
+    if(loadTexture("Textures\\Test\\water.jpg", renderResources)){
         std::cout << "Failed to load Texture." << std::endl;
         return 1;
     }

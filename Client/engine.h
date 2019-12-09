@@ -85,6 +85,7 @@ struct WindowState{
 	GLFWwindow* window;
 	//Inputs
 	bool key_Escape = false;
+	bool key_F1 = false;
 	bool key_W = false;
 	bool key_A = false;
 	bool key_S = false;
@@ -121,6 +122,7 @@ struct NetworkState{
 	Receive_P receive_p;
 
 	//Input Queue
+	int input_queue_size = 64;
 	CircularQueue input_queue;
 
 	//Server
@@ -144,12 +146,12 @@ struct NetworkState{
 };
 
 //Client Functions
-int initEngine(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState);
+int initEngine(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState, NetworkState* networkState);
 void loop(WindowState* windowState, OpenGLState* openGLState, RenderResources* renderResources, RenderState* renderState, NetworkState* networkState);
 void input(GLFWwindow* window, int key, int scancode, int action, int mods);
-void update(double time, WindowState* windowState, RenderState* renderState, NetworkState* networkState);
-void render(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
-void destroyEngine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
+void update(double alpha, double time, WindowState* windowState, RenderState* renderState, NetworkState* networkState);
+void render(double alpha, double  time, WindowState* windowState, RenderResources* renderResources, RenderState* renderState);
+void destroyEngine(WindowState* windowState, RenderResources* renderResources, RenderState* renderState, NetworkState* networkState);
 void predictToNextMove(Move** temp1, Move** temp2, RenderState* renderState, NetworkState* networkState);
 void predictToNextMove_Render(Move** temp1, RenderState* renderState, NetworkState* networkState);
 

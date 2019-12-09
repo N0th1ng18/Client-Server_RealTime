@@ -118,7 +118,7 @@ int Engine_Server::update(NetworkState* networkState, MasterGameState* masterGam
                         networkState->connect_response_P.time = time;
                         networkState->connect_response_P.MSG_TYPE = CONNECTION_ACCEPTED;
                         networkState->connect_response_P.client_id = client_id;
-                        std::cout << "Sent CONNECTION_ACCEPTED" << std::endl;
+                        std::cout << "Sent CONNECTION_ACCEPTED: " << client_id << std::endl;
                         if(Engine_Server::udpSend_server(networkState, &networkState->client_address, (char*)&networkState->connect_response_P, sizeof(Connect_Response_P))){
                             std::cout << "Error: Failed to send CONNECTION_ACCEPTED." << std::endl;
                             break;
